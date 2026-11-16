@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: nutrition-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/nutrition}
+    username: ${POSTGRES_USER:nutrition}
+    password: ${POSTGRES_PASSWORD:local-development-only}
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+server:
+  port: 8080
+  error:
+    include-message: never
+    include-stacktrace: never
+app:
+  cookie-secure: ${COOKIE_SECURE:false}
+  demo-enabled: ${DEMO_ENABLED:false}
+  demo-user-password: ${DEMO_USER_PASSWORD:}
+  demo-admin-password: ${DEMO_ADMIN_PASSWORD:}
+springdoc:
+  api-docs:
+    path: /api/v1/openapi
+  swagger-ui:
+    path: /api/v1/docs

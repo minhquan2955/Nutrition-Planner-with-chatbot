@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+out/
+target/
+.tools/
+.cache/
+.superpowers/
+*.log
+*.tsbuildinfo
+playwright-report/
+test-results/
+backups/
+.DS_Store

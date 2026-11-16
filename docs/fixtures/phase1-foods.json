@@ -1,0 +1,44 @@
+{
+  "basis": "100 g cooked edible portion; no raw/cooked conversion",
+  "dataRelease": "USDA Standard Reference 28 (2015)",
+  "verifiedAt": "2026-11-16",
+  "pricesAreSimulated": true,
+  "recipes": [
+    {
+      "name": "Trứng luộc chín", "standardServings": 1, "finishedWeightG": 50,
+      "instructions": "Dùng 50 g trứng đã luộc chín, bỏ vỏ; không thêm dầu hoặc gia vị.",
+      "ingredientId": "30000000-0000-0000-0000-000000000001", "quantityG": 50,
+      "sourceName": "Egg, whole, cooked, hard-boiled", "ndbId": "01129", "sourcePdfPage": 384,
+      "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg01.pdf",
+      "preparationState": "COOKED_HARD_BOILED", "basisGrams": 100,
+      "kcal": 155, "proteinG": 12.58, "carbohydrateG": 1.12, "fatG": 10.61,
+      "allergenFlags": ["EGG"], "dietTags": ["OMNIVORE", "VEGETARIAN"],
+      "simulatedPricePer100gVnd": 6000,
+      "expectedPerServing": {"kcal": 77.5, "proteinG": 6.29, "carbohydrateG": 0.56, "fatG": 5.305, "simulatedCostVnd": 3000}
+    },
+    {
+      "name": "Cơm gạo trắng hạt dài (enriched)", "standardServings": 1, "finishedWeightG": 150,
+      "instructions": "Cân 150 g cơm đã nấu chín thuộc đúng loại dữ liệu nguồn; không quy đổi từ gạo sống.",
+      "ingredientId": "30000000-0000-0000-0000-000000000002", "quantityG": 150,
+      "sourceName": "Rice, white, long-grain, regular, enriched, cooked", "ndbId": "20045", "sourcePdfPage": 325,
+      "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+      "preparationState": "COOKED", "basisGrams": 100,
+      "kcal": 130, "proteinG": 2.69, "carbohydrateG": 28.17, "fatG": 0.28,
+      "allergenFlags": [], "dietTags": ["OMNIVORE", "VEGETARIAN", "VEGAN"],
+      "simulatedPricePer100gVnd": 2000,
+      "expectedPerServing": {"kcal": 195, "proteinG": 4.035, "carbohydrateG": 42.255, "fatG": 0.42, "simulatedCostVnd": 3000}
+    },
+    {
+      "name": "Cơm gạo lứt hạt dài", "standardServings": 1, "finishedWeightG": 150,
+      "instructions": "Cân 150 g cơm gạo lứt hạt dài đã nấu chín, không thêm dầu hoặc gia vị.",
+      "ingredientId": "30000000-0000-0000-0000-000000000003", "quantityG": 150,
+      "sourceName": "Rice, brown, long-grain, cooked", "ndbId": "20037", "sourcePdfPage": 277,
+      "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+      "preparationState": "COOKED", "basisGrams": 100,
+      "kcal": 123, "proteinG": 2.74, "carbohydrateG": 25.58, "fatG": 0.97,
+      "allergenFlags": [], "dietTags": ["OMNIVORE", "VEGETARIAN", "VEGAN"],
+      "simulatedPricePer100gVnd": 3000,
+      "expectedPerServing": {"kcal": 184.5, "proteinG": 4.11, "carbohydrateG": 38.37, "fatG": 1.455, "simulatedCostVnd": 4500}
+    }
+  ]
+}
