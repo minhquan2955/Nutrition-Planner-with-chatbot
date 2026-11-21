@@ -24,6 +24,8 @@ services:
       DEMO_ENABLED: ${DEMO_ENABLED:-false}
       DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-}
       DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
     depends_on:
       db:
         condition: service_healthy

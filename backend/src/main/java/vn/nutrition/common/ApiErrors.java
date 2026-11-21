@@ -7,6 +7,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -32,6 +33,10 @@ public class ApiErrors {
     }
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<Error> malformed() { return ResponseEntity.badRequest().body(body("INVALID_JSON","Dữ liệu không đúng định dạng hoặc chứa trường không được hỗ trợ.",Map.of())); }
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<Error> invalidParameter(MethodArgumentTypeMismatchException e) {
+        return ResponseEntity.badRequest().body(body("VALIDATION_ERROR", "Tham số yêu cầu không hợp lệ.", Map.of()));
+    }
     @ExceptionHandler(Exception.class)
     ResponseEntity<Error> unexpected() {
         // Never echo SQL, input profiles, credentials or stack traces to the client.

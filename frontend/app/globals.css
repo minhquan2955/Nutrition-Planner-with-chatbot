@@ -152,6 +152,26 @@ textarea { resize:vertical }
 .empty p { font-size:13px; color:var(--muted); margin:10px 0 24px }
 .empty-icon { font-size:54px; color:#9bb08d; display:block }
 .password-panel { max-width:560px }
+.meal-actions,.meal-result,.recipe-catalog { margin-bottom:18px }
+.meal-actions,.meal-result,.recipe-catalog { font-size:13px }
+.meal-actions-row { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px }
+.meal-actions h2,.meal-result h2 { font-size:16px }
+.meal-actions p,.meal-result p { margin-top:8px }
+.meal-actions [role="status"],.meal-actions .notice { margin-top:14px }
+.meal-actions .notice small,.meal-item small,.recipe li small { display:block; color:var(--muted); margin-top:3px }
+.meal-result time { color:var(--muted); flex-shrink:0 }
+.meal-totals { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:15px 0 12px }
+.meal-totals div { padding:12px; border-radius:9px; background:var(--pale) }
+.meal-totals dd { font-size:clamp(15px,4vw,22px); font-weight:600; margin-top:3px }
+.meal-group { margin-top:20px }
+.meal-group h3 { font-size:14px }
+.meal-group ul,.recipe ul { list-style:none; padding:0; margin:7px 0 0 }
+.meal-item { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:9px 0; border-top:1px solid var(--line) }
+.meal-item>span { flex-shrink:0 }
+.recipe-catalog summary { cursor:pointer; font-weight:600 }
+.recipe { border-top:1px solid var(--line); margin-top:12px; padding-top:12px }
+.recipe p,.recipe li { margin-top:6px }
+.recipe li { overflow-wrap:anywhere }
 .skip-link { position:fixed; top:-100px; left:10px; padding:12px; background:white; z-index:10 }
 .skip-link:focus { top:10px }
 @media(max-width:1100px) {
@@ -168,8 +188,10 @@ textarea { resize:vertical }
  .auth-area>footer { margin-top:35px } .auth-card h1 { font-size:26px }
  .sidebar { position:static; width:auto; padding:18px 18px 10px; border-right:0; border-bottom:1px solid var(--line) }
  .sidebar .brand { font-size:22px; padding:0 } .brand-icon { width:30px; height:30px; font-size:24px }
- .workspace-label,.sidebar-note,.sidebar-footer { display:none } .sidebar nav { flex-direction:row; margin-top:17px; gap:6px }
- .nav-item { padding:10px 12px; font-size:12px; justify-content:center; gap:7px } .nav-item>i { display:none }
+ .workspace-label,.sidebar-note,.sidebar-footer { display:none }
+ .sidebar nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); margin-top:17px; gap:6px }
+ .nav-item { display:grid; place-items:center; align-content:center; min-height:44px; padding:6px 2px; font-size:12px; line-height:1.2; text-align:center; gap:4px }
+ .nav-item>span { font-size:15px } .nav-item>i { display:none }
  .app-layout { display:block } .main-layout { margin:0; width:100% } .topbar { padding:13px 20px; min-height:65px }
  .breadcrumb { display:none } .account { width:100%; gap:9px } .account .logout { margin-left:auto }
  .account strong { max-width:170px } .content { padding:28px 18px }
