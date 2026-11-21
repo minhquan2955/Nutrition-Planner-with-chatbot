@@ -12,7 +12,10 @@ test("US01_US02_US04: đăng ký, hồ sơ, chỉ số, tải lại, đổi mậ
   await page.getByLabel("Ngày sinh").fill("1996-01-01");
   await page.getByLabel("Chiều cao (cm)").fill("175");
   await page.getByLabel("Cân nặng (kg)").fill("70");
-  await page.getByLabel("Tôi tự khai báo đang khỏe mạnh").check();
+  for (const heading of ["Thói quen ăn uống", "Điều kiện cá nhân hóa"]) {
+    await expect(page.getByRole("heading", { name: heading })).toHaveCount(0);
+  }
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
   await page.getByRole("button", { name: "Lưu hồ sơ và tính chỉ số" }).click();
   await expect(page.getByRole("heading", { name: "Chỉ số của bạn" })).toBeVisible();
   await expect(page.getByTestId("metric-bmi")).toContainText("22,86");
@@ -40,6 +43,12 @@ test("US01_US02_US04: đăng ký, hồ sơ, chỉ số, tải lại, đổi mậ
   await page.getByLabel("Mật khẩu", { exact: true }).fill("ChangedPassword2!");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page.getByTestId("metric-bmi")).toContainText("22,86");
+  await page.getByRole("button", { name: "Hồ sơ", exact: true }).click();
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "Xóa hồ sơ hiện tại" }).click();
+  await expect(page.getByRole("status")).toContainText("Đã xóa hồ sơ hiện tại.");
+  await page.reload();
+  await expect(page.getByLabel("Cân nặng (kg)")).toBeEmpty();
   await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Chào mừng trở lại" })).toBeVisible();
 });
@@ -69,13 +78,14 @@ test("FR02_TC02: form cũ bị chặn khi cookie đổi tài khoản", async ({ 
   await page.getByLabel("Ngày sinh").fill("1996-01-01");
   await page.getByLabel("Chiều cao (cm)").fill("175");
   await page.getByLabel("Cân nặng (kg)").fill("70");
-  await page.getByLabel("Tôi tự khai báo đang khỏe mạnh").check();
   // Simulate another tab replacing the shared cookie, even without its storage notification.
-  const csrf = await (await page.request.get("/api/v1/auth/csrf")).json();
-  const headers = { [csrf.headerName]: csrf.token };
+  async function csrfHeaders() {
+    const csrf = await (await page.request.get("/api/v1/auth/csrf")).json();
+    return { [csrf.headerName]: csrf.token };
+  }
   const credentials = { email: `stale-b-${suffix}@example.com`, password: "SecurePassword1!" };
-  expect((await page.request.post("/api/v1/auth/register", { headers, data: { ...credentials, displayName: "Tài khoản B" } })).status()).toBe(201);
-  expect((await page.request.post("/api/v1/auth/login", { headers, data: credentials })).status()).toBe(200);
+  expect((await page.request.post("/api/v1/auth/register", { headers: await csrfHeaders(), data: { ...credentials, displayName: "Tài khoản B" } })).status()).toBe(201);
+  expect((await page.request.post("/api/v1/auth/login", { headers: await csrfHeaders(), data: credentials })).status()).toBe(200);
   await page.getByRole("button", { name: "Lưu hồ sơ và tính chỉ số" }).click();
   await expect(page.getByRole("heading", { name: "Chào mừng trở lại" })).toBeVisible();
   expect((await page.request.get("/api/v1/me/profile")).status()).toBe(404);

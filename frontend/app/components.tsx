@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { api, ApiError, type Account, type Ingredient, type Profile, type ProfileView } from "../lib/api";
+import { api, ApiError, type Account, type Profile, type ProfileView } from "../lib/api";
 
 export function Notice({ error }: { error: unknown }) {
   if (!error) return null;
@@ -41,7 +41,7 @@ export function AuthForm({ onLogin, notice }: { onLogin: (account: Account) => P
   </section>;
 }
 
-export function ProfileForm({ current, ingredients, onSave, onReload }: { current: ProfileView | null; ingredients: Ingredient[]; onSave: (p: ProfileView) => void; onReload: () => Promise<void> }) {
+export function ProfileForm({ current, onSave, onDelete, onReload }: { current: ProfileView | null; onSave: (p: ProfileView) => void; onDelete: () => void; onReload: () => Promise<void> }) {
   const p = current?.profile;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -54,17 +54,23 @@ export function ProfileForm({ current, ingredients, onSave, onReload }: { curren
     const payload: Profile = {
       expectedVersion: current?.version || 0, birthDate: str("birthDate"), sexForFormula: str("sexForFormula"),
       heightCm: Number(d.get("heightCm")), weightKg: Number(d.get("weightKg")), activityLevel: str("activityLevel"), goal: str("goal"),
-      selfDeclaredHealthy: d.has("selfDeclaredHealthy"), pregnant: d.has("pregnant"), breastfeeding: d.has("breastfeeding"), requiresTherapeuticDiet: d.has("requiresTherapeuticDiet"),
-      dietType: str("dietType"), dailyBudget: Number(d.get("dailyBudget")), mealsPerDay: Number(d.get("mealsPerDay")),
-      allergyIngredientIds: d.getAll("allergyIngredientIds").map(String), dislikedIngredientIds: d.getAll("dislikedIngredientIds").map(String), unresolvedAllergies: str("unresolvedAllergies"),
     };
     try { onSave(await api<ProfileView>("/me/profile", "PUT", payload)); }
     catch (e) { setError(e); } finally { setBusy(false); }
   }
+  async function deleteProfile() {
+    if (!current || !window.confirm("Xóa hồ sơ hiện tại? Các phiên bản đã lưu vẫn được giữ trong lịch sử.")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/me/profile?expectedVersion=${current.version}`, "DELETE");
+      onDelete();
+    } catch (e) { setError(e); } finally { setBusy(false); }
+  }
   return <><header className="page-heading"><div><span className="eyebrow">HIỂU CƠ THỂ BẠN</span><h1>Hồ sơ dinh dưỡng</h1><p className="muted">Thông tin hôm nay là điểm bắt đầu cho mục tiêu của bạn.</p></div><span className="pill">{current ? `Phiên bản ${current.version}` : "Hồ sơ mới"}</span></header>
     <form onSubmit={submit} className="profile-form"><Notice error={error} />
       {error instanceof ApiError && error.code === "PROFILE_CONFLICT" && <button type="button" className="secondary" onClick={async () => { try { await onReload(); setError(null); } catch (e) { setError(e); } }}>Tải lại hồ sơ</button>}
-      <section className="panel"><div className="section-title"><span className="step">01</span><div><h2>Thể trạng & mục tiêu</h2><p>Chỉ số được tính từ thông tin bạn tự khai báo.</p></div></div>
+      <section className="panel"><div className="section-title"><div><h2>Thể trạng & mục tiêu</h2><p>Chỉ số được tính từ thông tin bạn tự khai báo.</p></div></div>
         <div className="form-grid">
           <Field name="birthDate" label="Ngày sinh" errors={errors}><input {...invalid("birthDate")} id="birthDate" name="birthDate" type="date" defaultValue={p?.birthDate} required /></Field>
           <Field name="sexForFormula" label="Nhóm dùng cho công thức" errors={errors} hint="Hệ số của công thức Mifflin–St Jeor."><select id="sexForFormula" name="sexForFormula" defaultValue={p?.sexForFormula || "MALE"}><option value="MALE">Nam (+5)</option><option value="FEMALE">Nữ (−161)</option></select></Field>
@@ -74,26 +80,7 @@ export function ProfileForm({ current, ingredients, onSave, onReload }: { curren
           <Field name="goal" label="Mục tiêu" errors={errors}><select id="goal" name="goal" defaultValue={p?.goal || "MAINTAIN"}><option value="MAINTAIN">Duy trì cân nặng</option><option value="LOSE">Giảm cân</option><option value="GAIN">Tăng cân</option><option value="MUSCLE">Tăng cơ</option></select></Field>
         </div>
       </section>
-      <section className="panel"><div className="section-title"><span className="step">02</span><div><h2>Thói quen ăn uống</h2><p>Ghi nhận sở thích và những thực phẩm cần loại trừ.</p></div></div>
-        <div className="form-grid">
-          <Field name="dietType" label="Chế độ ăn" errors={errors}><select id="dietType" name="dietType" defaultValue={p?.dietType || "OMNIVORE"}><option value="OMNIVORE">Ăn thông thường</option><option value="VEGETARIAN">Chay có trứng / sữa</option><option value="VEGAN">Thuần chay</option></select></Field>
-          <Field name="mealsPerDay" label="Số bữa mỗi ngày" errors={errors}><select id="mealsPerDay" name="mealsPerDay" defaultValue={p?.mealsPerDay || 3}><option value="3">3 bữa</option><option value="4">4 bữa</option><option value="5">5 bữa</option></select></Field>
-          <Field name="dailyBudget" label="Ngân sách (VND/ngày)" errors={errors}><input {...invalid("dailyBudget")} id="dailyBudget" name="dailyBudget" type="number" min="0" max="999999999" step="1" required defaultValue={p?.dailyBudget ?? 100000} /></Field>
-        </div>
-        {([ ["allergyIngredientIds", "Dị ứng với nguyên liệu"], ["dislikedIngredientIds", "Thực phẩm muốn loại trừ"] ] as const).map(([name, title]) => <fieldset key={name} className="ingredient-field"><legend>{title}</legend>
-          <div className="checks">{ingredients.map(i => <label className="check-chip" key={i.id}><input type="checkbox" name={name} value={i.id} defaultChecked={p?.[name].includes(i.id)} />{i.name}{i.status === "INACTIVE" && " (đã ngừng sử dụng)"}</label>)}</div>
-          {!ingredients.length && <p className="muted">Danh mục nguyên liệu đang được chuẩn bị. Ghi dị ứng chưa rõ vào ô bên dưới.</p>}
-          {errors[name] && <p className="field-error">{errors[name]}</p>}
-        </fieldset>)}
-        <Field name="unresolvedAllergies" label="Dị ứng khác hoặc chưa rõ nguyên liệu" errors={errors} hint="Thông tin này sẽ được giữ lại và cần làm rõ trước khi tạo thực đơn."><textarea id="unresolvedAllergies" name="unresolvedAllergies" rows={3} maxLength={1000} defaultValue={p?.unresolvedAllergies} placeholder="Ví dụ: từng dị ứng với một món nhưng chưa biết nguyên liệu…" /></Field>
-      </section>
-      <section className="panel"><div className="section-title"><span className="step">03</span><div><h2>Điều kiện cá nhân hóa</h2><p>Dành cho người từ 18 tuổi, khỏe mạnh và không cần chế độ ăn điều trị.</p></div></div>
-        <div className="health-checks">{([
-          ["selfDeclaredHealthy", "Tôi tự khai báo đang khỏe mạnh"], ["pregnant", "Tôi đang mang thai"], ["breastfeeding", "Tôi đang cho con bú"], ["requiresTherapeuticDiet", "Tôi cần chế độ ăn điều trị"],
-        ] as const).map(([name, label]) => <label key={name}><input name={name} type="checkbox" defaultChecked={p?.[name] || false} />{label}</label>)}</div>
-        <p className="helper-note">Nếu ngoài phạm vi, bạn vẫn có thể lưu hồ sơ và xem kiến thức chung; hệ thống không đặt mục tiêu dinh dưỡng cá nhân.</p>
-      </section>
-      <div className="form-actions"><p className="muted">Mỗi lần lưu tạo một phiên bản mới.</p><button className="primary" disabled={busy}>{busy ? "Đang lưu…" : "Lưu hồ sơ và tính chỉ số"}<span aria-hidden="true">→</span></button></div>
+      <div className="form-actions">{current && <button type="button" className="secondary" onClick={deleteProfile} disabled={busy}>Xóa hồ sơ hiện tại</button>}<button className="primary" disabled={busy}>Lưu hồ sơ và tính chỉ số<span aria-hidden="true">→</span></button></div>
     </form></>;
 }
 
@@ -102,8 +89,7 @@ export function Dashboard({ view, edit }: { view: ProfileView | null; edit: () =
   const m = view?.metrics;
   return <><header className="page-heading"><div><span className="eyebrow">MỘT ĐIỂM BẮT ĐẦU RÕ RÀNG</span><h1>Chỉ số của bạn</h1><p className="muted">Hiểu nhu cầu của cơ thể, từng bước một.</p></div><button className="secondary" onClick={edit}>Cập nhật hồ sơ ↗</button></header>
     {!view ? <section className="panel empty"><span className="empty-icon" aria-hidden="true">◌</span><h2>Bắt đầu bằng hồ sơ của bạn</h2><p>Chỉ cần vài thông tin để xem các chỉ số ước tính.</p><button className="primary" onClick={edit}>Tạo hồ sơ</button></section> : <>
-      {!view.eligible && <section className="notice"><h2>Chỉ xem kiến thức chung</h2><p>Hồ sơ được lưu, nhưng chưa thuộc phạm vi cá nhân hóa.</p><ul>{view.eligibilityReasons.map(r => <li key={r}>{r}</li>)}</ul></section>}
-      {view.needsAllergyClarification && <div className="notice warning" role="status"><strong>Cần làm rõ dị ứng</strong><p>{view.profile.unresolvedAllergies}</p><p>Chưa thể tạo thực đơn khi nguyên liệu gây dị ứng chưa được xác định.</p></div>}
+      {!view.adult && <section className="notice"><h2>Hồ sơ đã được lưu</h2><p>Các công thức ước tính của ứng dụng dành cho người từ 18 tuổi.</p></section>}
       {m ? <>
         <div className="metrics-grid"><section className="target-card"><span className="eyebrow">NĂNG LƯỢNG MỤC TIÊU · ƯỚC TÍNH</span><div className="target-number">{fmt(m.targetKcal)}<span>kcal / ngày</span></div><div className="target-bottom"><span>Mục tiêu hiện tại</span><strong>{{ MAINTAIN: "Duy trì cân nặng", LOSE: "Giảm cân", GAIN: "Tăng cân", MUSCLE: "Tăng cơ" }[view.profile.goal]}</strong></div></section>
           <section className="metric-card" data-testid="metric-bmi"><span className="metric-icon" aria-hidden="true">◫</span><span>BMI</span><strong>{fmt(m.bmi, 2)}</strong><small>kg/m² · Chỉ số khối cơ thể</small></section>
@@ -112,7 +98,7 @@ export function Dashboard({ view, edit }: { view: ProfileView | null; edit: () =
           {[["Protein", m.proteinG, "protein"], ["Carbohydrate", m.carbohydrateG, "carb"], ["Chất béo", m.fatG, "fat"]].map(([label, value, color]) => <div className="macro-row" key={String(label)}><span><i className={String(color)} />{label}</span><strong>{fmt(Number(value), 1)} <small>g</small></strong></div>)}</div></section>
           <section className="panel"><h2>Năng lượng ước tính</h2><div className="energy-row"><div><strong>Năng lượng nghỉ</strong><small>REE/RMR · Mifflin–St Jeor</small></div><b>{fmt(m.estimatedBmr)} <small>kcal</small></b></div><div className="energy-row"><div><strong>Tổng tiêu hao</strong><small>TDEE · Đã tính vận động</small></div><b>{fmt(m.tdee)} <small>kcal</small></b></div><p className="helper-note">Đây là ước tính từ công thức, không phải phép đo chuyển hóa.</p></section></div>
         <section className="source-panel"><span className="source-mark" aria-hidden="true">i</span><div><h2>Biết các con số đến từ đâu</h2><p>Công thức năng lượng nghỉ: <a href="https://pubmed.ncbi.nlm.nih.gov/2305711/" target="_blank" rel="noreferrer">Mifflin–St Jeor (1990) ↗</a>. Hệ số vận động, kcal mục tiêu, macro và nước là tham số nhóm chọn cho đồ án, không phải khuyến nghị y khoa.</p><small>Quy tắc {view.ruleVersion} · Hồ sơ v{view.version} · {view.calculatedAt && new Date(view.calculatedAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</small></div></section>
-      </> : view.eligible && <section className="panel empty"><h2>Chưa có kết quả tính</h2><p>Lưu lại hồ sơ để tính chỉ số theo thông tin hiện tại.</p><button className="primary" onClick={edit}>Mở hồ sơ</button></section>}
+      </> : view.adult && <section className="panel empty"><h2>Chưa có kết quả tính</h2><p>Lưu lại hồ sơ để tính chỉ số theo thông tin hiện tại.</p><button className="primary" onClick={edit}>Mở hồ sơ</button></section>}
     </>}
   </>;
 }

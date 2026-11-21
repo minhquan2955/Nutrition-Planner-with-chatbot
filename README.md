@@ -78,12 +78,13 @@ OpenAPI JSON: `/api/v1/openapi`; Swagger UI: `/api/v1/docs` trên gateway Docker
 | POST | /api/v1/auth/logout | Thu hồi phiên hiện tại |
 | POST | /api/v1/auth/change-password | Đổi mật khẩu, thu hồi mọi phiên |
 | GET / PUT | /api/v1/me/profile | Đọc/lưu hồ sơ của người đăng nhập |
+| DELETE | /api/v1/me/profile?expectedVersion={version} | Bỏ hồ sơ hiện tại, giữ lịch sử trong DB |
 | GET | /api/v1/me/metrics | Snapshot chỉ số cùng phiên bản quy tắc |
-| GET | /api/v1/ingredients | Định danh nguyên liệu cho dị ứng/loại trừ |
+| GET | /api/v1/ingredients | Đọc danh mục định danh nguyên liệu mẫu |
 
 Mọi POST/PUT cần header CSRF từ `/auth/csrf`. Các thao tác đã xác thực cần thêm **`X-Session-Context`** từ `/auth/login` hoặc `/auth/me`, ngăn tab cũ ghi dữ liệu vào tài khoản vừa đổi. Header này không dùng để xác định chủ sở hữu: backend chỉ lấy chủ sở hữu từ cookie phiên đã xác thực. Phiên ngẫu nhiên 256 bit, lưu hash SHA-256 trong DB, hết hạn sau 8 giờ; kiểm tra tài khoản ACTIVE mỗi request.
 
-Lưu hồ sơ gửi `expectedVersion` (0 khi tạo). Nếu phiên bản đã thay đổi, API trả 409; UI cho tải lại. Mỗi lần lưu tạo hồ sơ mới, sở thích/dị ứng và snapshot chỉ số trong một giao dịch; lịch sử giữ nguyên. Sai dữ liệu trả `code`, `message`, `fieldErrors`, `traceId`. Dị ứng chưa rõ được lưu và cảnh báo. Ngoài phạm vi cá nhân hóa không tạo snapshot mục tiêu. Chỉ số tính theo tuổi tại lúc lưu; cần lưu lại hồ sơ để cập nhật sau sinh nhật.
+Hồ sơ cơ bản gồm ngày sinh, nhóm hệ số công thức, chiều cao, cân nặng, mức vận động và mục tiêu. Người dùng có thể tạo, xem, sửa và xóa hồ sơ hiện tại. Khi lưu, gửi `expectedVersion` (0 nếu chưa có hồ sơ hiện tại). Khi sửa hoặc xóa gặp xung đột phiên bản, API trả 409 và giao diện cho tải lại. Backend lưu một phiên bản mới khi cập nhật và giữ lịch sử. Người từ 18 tuổi nhận chỉ số ước tính theo tuổi tại lần lưu.
 
 ## Sao lưu và khôi phục thử
 
@@ -107,8 +108,25 @@ Nếu khôi phục từ file đã lưu trên máy: `docker compose cp ./backups/
 - `frontend/`: Next.js 16, TypeScript, Tailwind CSS; UI tiếng Việt.
 - `infra/nginx.conf`: cùng origin cho frontend và API.
 - `docs/AGENTS.md`: nguyên tắc toàn dự án.
+- [Kế hoạch 6 phase](docs/Ke_hoach_TTCS_6_phase_va_User_Story.md) ghi lịch tích hợp Spring AI và tiêu chí nghiệm thu.
 - `docs/PHASE1.md`: quyết định, sơ đồ, truy vết và giới hạn.
 - `docs/fixtures/`: 3 món mẫu có nguồn + PDF và câu hỏi/trang.
 - `docs/TEST_RESULTS.md`: bằng chứng từ lần chạy thực tế.
 
-Chưa có tạo thực đơn, RAG, chat, tiến trình hoặc quản trị mở rộng. `OPENAI_API_KEY`/model để trống; không cần khóa AI để chạy Phase 1. Lần gọi AI thật trong checklist ngày 16/11 chưa đánh giá khi chưa cấu hình khóa/model.
+### Kiến trúc AI dự kiến cho Phase 2–3
+
+```mermaid
+flowchart LR
+    UI[Next.js] -->|API qua Nginx| APP
+    subgraph BE[Backend Spring Boot]
+        APP[Module thực đơn và Chatbot RAG] --> AI[Adapter OpenAI dùng Spring AI]
+    end
+    AI -->|Sinh nội dung và embedding| OPENAI[OpenAI]
+    APP -->|JDBC| DB[(PostgreSQL và pgvector)]
+```
+
+Phase 2 dùng Spring AI để gợi ý bữa ăn tham khảo cho một ngày theo kcal mục tiêu và mục tiêu dinh dưỡng trong hồ sơ cơ bản. Backend kiểm tra đầu ra và hiển thị tổng kcal ước tính cạnh mục tiêu. Gợi ý không kiểm tra dị ứng, thực phẩm loại trừ hoặc ngân sách.
+
+Phase 3 dùng cùng adapter cho embedding và hỏi đáp RAG. Người dùng có thể trao đổi về dị ứng, thói quen ăn uống và tình trạng cá nhân trong hội thoại. Backend truy xuất đoạn từ PDF đã duyệt và xác minh mã đoạn trước khi hiển thị trích dẫn. Phase 4 cho phép xem lại và hỏi Chatbot về gợi ý đã lưu.
+
+Phase 1 chạy với các biến OpenAI để trống. Lần gọi OpenAI thật đầu tiên được lên lịch ở Phase 2. Tạo thực đơn, RAG, chat, tiến trình và quản trị mở rộng thuộc các phase tiếp theo.

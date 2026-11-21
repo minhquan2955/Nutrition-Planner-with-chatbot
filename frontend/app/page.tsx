@@ -1,19 +1,23 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, ApiError, type Account, type Ingredient, type ProfileView } from "../lib/api";
+import { api, ApiError, type Account, type ProfileView } from "../lib/api";
 import { AuthForm, Dashboard, Notice, PasswordForm, ProfileForm } from "./components";
+
+async function fetchProfile() {
+  try { return await api<ProfileView>("/me/profile"); }
+  catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+}
 
 export default function Page() {
   const [account, setAccount] = useState<Account | null>(null);
   const [profile, setProfile] = useState<ProfileView | null>(null);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [screen, setScreen] = useState<"dashboard" | "profile" | "password">("dashboard");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
   useEffect(() => {
     const onStorage = (event: StorageEvent) => { if (event.key === "nutrition-auth-change") window.location.reload(); };
-    const onSessionChanged = () => { setAccount(null); setProfile(null); setIngredients([]); setError(null); setNotice("Phiên đăng nhập đã thay đổi hoặc hết hạn. Vui lòng đăng nhập lại."); };
+    const onSessionChanged = () => { setAccount(null); setProfile(null); setError(null); setNotice("Phiên đăng nhập đã thay đổi hoặc hết hạn. Vui lòng đăng nhập lại."); };
     window.addEventListener("storage", onStorage); window.addEventListener("nutrition-session-changed", onSessionChanged);
     return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("nutrition-session-changed", onSessionChanged); };
   }, []);
@@ -24,28 +28,22 @@ export default function Page() {
         const user = await api<Account>("/auth/me");
         if (!active) return;
         setAccount(user);
-        const [p, choices] = await Promise.all([
-          api<ProfileView>("/me/profile").catch(e => { if (e instanceof ApiError && e.status === 404) return null; throw e; }),
-          api<Ingredient[]>("/ingredients"),
-        ]);
-        if (active) { setProfile(p); setIngredients(choices); setScreen(p ? "dashboard" : "profile"); }
+        const p = await fetchProfile();
+        if (active) { setProfile(p); setScreen(p ? "dashboard" : "profile"); }
       } catch (e) { if (active && !(e instanceof ApiError && e.status === 401)) setError(e); }
       finally { if (active) setLoading(false); }
     }
     void load(); return () => { active = false; };
   }, []);
   async function loadProfile() {
-    const [p, choices] = await Promise.all([
-      api<ProfileView>("/me/profile").catch(e => { if (e instanceof ApiError && e.status === 404) return null; throw e; }),
-      api<Ingredient[]>("/ingredients"),
-    ]);
-    setProfile(p); setIngredients(choices); return p;
+    const p = await fetchProfile();
+    setProfile(p); return p;
   }
   async function login(user: Account) {
     const p = await loadProfile();
     setAccount(user); setScreen(p ? "dashboard" : "profile"); setError(null); setNotice("");
   }
-  function signedOut(message = "") { setAccount(null); setProfile(null); setIngredients([]); setError(null); setNotice(message); }
+  function signedOut(message = "") { setAccount(null); setProfile(null); setError(null); setNotice(message); }
   async function logout() {
     try { await api("/auth/logout", "POST"); signedOut("Bạn đã đăng xuất."); }
     catch (e) { if (e instanceof ApiError && e.status === 401) signedOut("Phiên đã hết hạn. Vui lòng đăng nhập lại."); else setError(e); }
@@ -59,7 +57,10 @@ export default function Page() {
     <div className="main-layout"><header className="topbar"><span className="breadcrumb">Cá nhân <span>/</span> {{ dashboard: "Tổng quan", profile: "Hồ sơ", password: "Bảo mật" }[screen]}</span><div className="account"><span className="avatar" aria-hidden="true">{account.displayName.slice(0, 1).toUpperCase()}</span><div><strong>{account.displayName}</strong><small>{account.role === "ADMIN" ? "Quản trị viên" : "Tài khoản cá nhân"}</small></div><button className="text-button logout" onClick={logout}>Đăng xuất</button></div></header>
       <main id="content" className="content"><Notice error={error} />{notice && <div className="notice" role="status">{notice}</div>}
         {screen === "dashboard" && <Dashboard view={profile} edit={() => { setScreen("profile"); setNotice(""); }} />}
-        {screen === "profile" && <ProfileForm key={profile?.version || 0} current={profile} ingredients={ingredients} onSave={p => { setProfile(p); setScreen("dashboard"); setNotice("Đã lưu hồ sơ. Bạn có thể tải lại trang để xem dữ liệu đã lưu."); window.scrollTo({ top: 0, behavior: "smooth" }); }} onReload={async () => { await loadProfile(); }} />}
+        {screen === "profile" && <ProfileForm key={profile?.version || 0} current={profile}
+          onSave={p => { setProfile(p); setScreen("dashboard"); setNotice("Đã lưu hồ sơ."); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onDelete={() => { setProfile(null); setNotice("Đã xóa hồ sơ hiện tại."); }}
+          onReload={async () => { await loadProfile(); }} />}
         {screen === "password" && <PasswordForm onChanged={() => signedOut("Đã đổi mật khẩu và đăng xuất tất cả phiên. Vui lòng đăng nhập lại.")} />}
         <footer className="content-footer">NutriPlan · Thông tin tham khảo cho đồ án, không thay thế tư vấn chuyên môn.</footer>
       </main>

@@ -5,26 +5,28 @@
 ## 1. Cách dùng file này
 
 - Đọc hết file trước khi sửa code.
-- Khi các nguồn mâu thuẫn, ưu tiên: (1) yêu cầu của người dùng trong phiên làm việc, (2) file này, (3) `docs/PLAN.md` (đặc tả), (4) `docs/DB_TABLES.md` (thiết kế 30 bảng), (5) `docs/KE_HOACH_6_PHASE.docx` (lịch và user story).
+- Khi các nguồn mâu thuẫn, ưu tiên: (1) yêu cầu của người dùng trong phiên làm việc, (2) file này, (3) `docs/PLAN.md` (đặc tả), (4) `docs/DB_TABLES.md` (thiết kế 30 bảng), (5) `docs/Ke_hoach_TTCS_6_phase_va_User_Story.md` (lịch và user story).
 - Gặp mâu thuẫn hoặc thiếu thông tin: xem mục 15. Không tự quyết; hỏi và ghi lại.
 - Không đánh dấu một chức năng là "đã làm" nếu chưa chạy và chưa có test.
 
 ## 2. Mục tiêu và phạm vi
 
-Xây hệ thống chạy được, demo được, đánh giá được: người dùng khai báo hồ sơ → hệ thống tính chỉ số → AI đề xuất thực đơn → Backend kiểm tra và lưu → người dùng hỏi Chatbot RAG có dẫn nguồn → xác nhận đổi món.
+Luồng demo gồm khai báo hồ sơ, tính chỉ số, xem gợi ý bữa ăn một ngày theo kcal mục tiêu và hỏi Chatbot RAG có dẫn nguồn.
 
-**Đối tượng cá nhân hóa:** từ 18 tuổi, tự khai báo khỏe mạnh, không mang thai/cho con bú, không cần chế độ ăn điều trị. Người ngoài nhóm này chỉ xem kiến thức chung; không tạo thực đơn, không đặt mục tiêu dinh dưỡng cá nhân.
+Gợi ý dựa trên kcal mục tiêu ước tính và mục tiêu dinh dưỡng trong hồ sơ cơ bản. Gợi ý mang tính tham khảo. Luồng gợi ý không kiểm tra dị ứng, thực phẩm loại trừ hoặc ngân sách. Giao diện nêu rõ giới hạn khi hiển thị kết quả.
+
+**Phạm vi chỉ số Phase 1:** hồ sơ cơ bản có thể lưu ở mọi độ tuổi hợp lệ. Các công thức ước tính dùng cho người từ 18 tuổi. Tuổi được tính từ ngày sinh.
 
 **Ngoài phạm vi:** chẩn đoán, kê đơn, điều trị, tư vấn trực tiếp với bác sĩ, thanh toán, giao đồ ăn, app di động riêng, nhận dạng món bằng ảnh, OCR tài liệu scan, đăng nhập mạng xã hội, khôi phục mật khẩu qua email.
 
 ## 3. Tác nhân
 
-| Mã | Tác nhân | Ghi chú |
-|---|---|---|
-| ACT-01 | Khách | Chưa xác thực, không phải role lưu trong DB |
-| ACT-02 | Người dùng (`USER`) | Quản lý dữ liệu của mình |
-| ACT-03 | Quản trị viên (`ADMIN`) | Tài khoản, danh mục, tài liệu RAG, phản hồi, vận hành |
-| ACT-04 | OpenAI | Chỉ embedding và sinh nội dung theo yêu cầu của Backend. Không truy cập DB, không đổi thực đơn |
+| Mã     | Tác nhân                | Ghi chú                                                                                        |
+| ------ | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| ACT-01 | Khách                   | Chưa xác thực, không phải role lưu trong DB                                                    |
+| ACT-02 | Người dùng (`USER`)     | Quản lý dữ liệu của mình                                                                       |
+| ACT-03 | Quản trị viên (`ADMIN`) | Tài khoản, danh mục, tài liệu RAG, phản hồi, vận hành                                          |
+| ACT-04 | OpenAI                  | Chỉ embedding và sinh nội dung theo yêu cầu của Backend. Không truy cập DB, không đổi thực đơn |
 
 Chatbot, bộ kiểm tra thực đơn và PostgreSQL là thành phần bên trong, không phải tác nhân. Không thêm vai trò chuyên gia dinh dưỡng.
 
@@ -32,17 +34,19 @@ Chatbot, bộ kiểm tra thực đơn và PostgreSQL là thành phần bên tron
 
 Ba tầng, **một Backend chia module**. Không tách nhiều dịch vụ độc lập.
 
-| Tầng | Công nghệ |
-|---|---|
-| Presentation | Next.js, TypeScript, Tailwind CSS. Giao diện User và Admin |
-| Logic | Java, Spring Boot, RESTful API, Spring Security (session phía server) |
-| Data | PostgreSQL + pgvector. PDF lưu ở vùng không truy cập công khai |
-| Tích hợp ngoài | OpenAI qua adapter riêng. Model sinh và embedding cấu hình bằng biến môi trường |
+| Tầng           | Công nghệ                                                                       |
+| -------------- | ------------------------------------------------------------------------------- |
+| Presentation   | Next.js, TypeScript, Tailwind CSS. Giao diện User và Admin                      |
+| Logic          | Java, Spring Boot, RESTful API, Spring Security (session phía server)           |
+| Data           | PostgreSQL + pgvector. PDF lưu ở vùng không truy cập công khai                  |
+| Tích hợp ngoài (Phase 2–3) | Spring AI 1.1.x trong adapter OpenAI của Spring Boot. Khóa API, model sinh và model embedding lấy từ biến môi trường |
 
 - Frontend và API cùng origin qua reverse proxy.
 - Worker chạy trong ứng dụng Backend; trạng thái tác vụ lưu PostgreSQL.
 - Chạy bằng Docker Compose.
 - Module Backend: xác thực, hồ sơ, tính toán, thực phẩm/món ăn, thực đơn, tiến trình, Chatbot/RAG, quản trị.
+- Phase 2 dùng Spring AI và OpenAI Structured Outputs (`JSON_SCHEMA`) để sinh gợi ý bữa ăn một ngày. Backend kiểm tra định dạng và tính kcal ước tính từ dữ liệu món. Worker giới hạn 3 lần gọi trong 180 giây, tính cả lượt thử lại.
+- Phase 3 dùng cùng adapter để tạo embedding và sinh câu trả lời. Module RAG đọc PDF theo trang bằng `PagePdfDocumentReader`, lưu và truy xuất `rag_chunks` qua JDBC/pgvector, rồi xác minh mã đoạn trích dẫn. Schema đi qua Flyway.
 - Không hardcode khóa API hoặc tên model trong nghiệp vụ.
 - Đổi model embedding hoặc số chiều vector: tạo lại chỉ mục. Không trộn vector không tương thích.
 - Thời điểm lưu theo UTC. Ngày thực đơn và nhật ký theo `Asia/Ho_Chi_Minh`.
@@ -51,96 +55,69 @@ Ba tầng, **một Backend chia module**. Không tách nhiều dịch vụ độ
 
 Mốc: demo toàn luồng **11/12**, chốt code **18/12**, nộp **25/12/2026**.
 
-| Phase | Ngày | Kết quả |
-|---|---|---|
-| 1 | 16–20/11 | Tài khoản, hồ sơ, chỉ số chạy từ trình duyệt |
-| 2 | 23–27/11 | AI đề xuất thực đơn 1 ngày, Backend kiểm tra và lưu |
-| 3 | 30/11–04/12 | Chatbot trả lời có nguồn và số trang từ PDF đã duyệt |
-| 4 | 07–11/12 | Giải thích món, xác nhận thay món, xem phiên bản cũ |
-| 5 | 14–18/12 | Chốt phạm vi, kiểm tra lỗi, cài thử trên máy thứ hai |
-| 6 | 21–25/12 | Đo thực nghiệm, tổng duyệt, báo cáo, nộp |
+| Phase | Ngày        | Kết quả                                              |
+| ----- | ----------- | ---------------------------------------------------- |
+| 1     | 16–20/11    | Tài khoản, hồ sơ, chỉ số chạy từ trình duyệt         |
+| 2     | 23–27/11    | AI đề xuất thực đơn 1 ngày, Backend kiểm tra và lưu  |
+| 3     | 30/11–04/12 | Chatbot trả lời có nguồn và số trang từ PDF đã duyệt |
+| 4     | 07–11/12    | Xem lại gợi ý đã lưu và hỏi Chatbot về gợi ý         |
+| 5     | 14–18/12    | Chốt phạm vi, kiểm tra lỗi, cài thử trên máy thứ hai |
+| 6     | 21–25/12    | Đo thực nghiệm, tổng duyệt, báo cáo, nộp             |
 
 **P0:** tài khoản, hồ sơ, chỉ số, dữ liệu món cần thiết, thực đơn 1 ngày, nạp và duyệt PDF, hỏi đáp có trích dẫn.
-**P1:** nối Chatbot với thực đơn, xác nhận đổi món, xem lịch sử.
-**P2:** thực đơn 7 ngày, nhật ký tiến trình, phản hồi, quản trị mở rộng.
+**P1:** xem lại gợi ý đã lưu và hỏi Chatbot về nội dung gợi ý.
+**P2:** nhật ký tiến trình, phản hồi, quản trị mở rộng. Thực đơn tuần, áp dụng hoặc chỉnh sửa gợi ý và lịch sử phiên bản để ngoài phạm vi bàn giao.
 
-Chỉ làm P2 khi P0 và P1 chạy trọn vẹn. Luồng demo/bảo vệ: đăng nhập → hồ sơ → tạo thực đơn → hỏi Chatbot → xem nguồn → xác nhận đổi món → mở lại phiên bản cũ.
+Chỉ làm P2 khi P0 và P1 chạy trọn vẹn. Luồng demo/bảo vệ đi từ đăng nhập, hồ sơ và gợi ý một ngày đến hỏi Chatbot, xem nguồn và mở lại gợi ý đã lưu.
 
-User story: US01 đăng nhập; US02 hồ sơ; US03 danh mục (P0 cho dữ liệu mẫu, CRUD đầy đủ P2); US04 chỉ số; US05 nạp/duyệt PDF; US06 thực đơn 1 ngày; US07 hỏi đáp có nguồn; US08 lịch sử (P1) và thực đơn 7 ngày (P2); US09 giải thích và đổi món; US10 nhật ký (P2); US11 phản hồi (P2); US12 quyền riêng tư và khóa tài khoản (P2); US13 theo dõi vận hành (P2).
+User story gồm US01 đăng nhập, US02 hồ sơ, US03 danh mục (dữ liệu mẫu P0, CRUD đầy đủ P2), US04 chỉ số, US05 nạp và duyệt PDF, US06 gợi ý một ngày, US07 hỏi đáp có nguồn, US08 xem lại gợi ý đã lưu (P1), US09 giải thích gợi ý (P1), US10 nhật ký (P2), US11 phản hồi (P2), US12 quyền riêng tư và khóa tài khoản (P2), US13 theo dõi vận hành (P2).
 
 ## 6. Hồ sơ và công thức tính
 
-- Một tài khoản có một hồ sơ hiện tại và nhiều phiên bản lịch sử. Không ghi đè lịch sử khi hồ sơ đổi.
-- Chế độ ăn ban đầu: ăn thông thường, chay có trứng/sữa, thuần chay.
-- Dị ứng và thực phẩm loại trừ phải ánh xạ tới nguyên liệu chuẩn hóa. Dị ứng chưa ánh xạ được: yêu cầu làm rõ trước khi tạo thực đơn. Không bỏ qua.
+- Một tài khoản có tối đa một hồ sơ hiện tại. Phase 1 hỗ trợ tạo, đọc, sửa và xóa hồ sơ hiện tại. Sửa tạo phiên bản mới. Xóa bỏ đánh dấu hiện tại và giữ lịch sử trong DB.
+- Hồ sơ cơ bản gồm ngày sinh, nhóm hệ số công thức, chiều cao, cân nặng, mức vận động và mục tiêu.
+- Người dùng có thể trao đổi về dị ứng, thói quen ăn uống và tình trạng cá nhân khi hỏi Chatbot ở Phase 3. Đây là ngữ cảnh hội thoại. Hồ sơ mới không thu thập các trường này.
 - Thiếu hoặc sai miền giá trị: báo lỗi tại đúng trường.
 
 **Công thức (có nguồn nghiên cứu):**
+
 - BMI = kg / m².
 - Năng lượng nghỉ (Mifflin–St Jeor) = `10×kg + 6,25×cm − 5×tuổi + hệ số`; hệ số `+5` hoặc `−161` theo `sex_for_formula`. Giao diện ghi rõ là **ước tính**. Báo cáo phân biệt "BMR" trong đề cương với REE/RMR của công thức gốc.
 
 **Tham số mặc định do nhóm chọn (không phải khuyến nghị y khoa), lưu trong `nutrition_rule_versions`:**
 
-| Tham số | Giá trị |
-|---|---|
-| Hệ số vận động | 1,2 / 1,375 / 1,55 / 1,725 / 1,9 (5 mức) |
-| TDEE | năng lượng nghỉ × hệ số vận động |
-| Kcal mục tiêu | duy trì = TDEE; giảm cân = 90% TDEE; tăng cân/tăng cơ = 110% TDEE |
-| P/C/F | 20/50/30; tăng cơ 25/45/30 |
-| Quy đổi | protein, carb 4 kcal/g; fat 9 kcal/g |
-| Nước | 30 ml/kg/ngày |
+| Tham số        | Giá trị                                                           |
+| -------------- | ----------------------------------------------------------------- |
+| Hệ số vận động | 1,2 / 1,375 / 1,55 / 1,725 / 1,9 (5 mức)                          |
+| TDEE           | năng lượng nghỉ × hệ số vận động                                  |
+| Kcal mục tiêu  | duy trì = TDEE; giảm cân = 90% TDEE; tăng cân/tăng cơ = 110% TDEE |
+| P/C/F          | 20/50/30; tăng cơ 25/45/30                                        |
+| Quy đổi        | protein, carb 4 kcal/g; fat 9 kcal/g                              |
+| Nước           | 30 ml/kg/ngày                                                     |
 
-Cân nặng mới trong nhật ký cập nhật hồ sơ và tạo phiên bản chỉ số mới. Thực đơn đã lưu giữ mục tiêu cũ; mục tiêu mới chỉ áp dụng khi tạo hoặc chỉnh kế hoạch.
+Cân nặng mới trong nhật ký cập nhật hồ sơ và tạo phiên bản chỉ số mới. Gợi ý đã lưu giữ kcal mục tiêu tại thời điểm tạo. Mục tiêu mới áp dụng cho yêu cầu gợi ý tiếp theo.
 
-## 7. Dữ liệu thực phẩm và bộ kiểm tra thực đơn
+## 7. Dữ liệu món và kcal ước tính
 
 - Số liệu dinh dưỡng trên **100 g phần ăn được**, kèm trạng thái sống/chín/chế biến, nguồn, ngày cập nhật.
 - Không trộn số liệu sống/chín. Không tự đổi ml sang g khi thiếu hệ số.
 - Không bịa thành phần dinh dưỡng hoặc nguồn để đủ số lượng. Thiếu dữ liệu thì ghi nhận phần thiếu.
-- Giá minh họa phải ghi rõ là giá giả lập.
-- Dữ liệu demo tối thiểu: 100 thực phẩm, 50 món, 10 tài liệu có nguồn xác minh.
+- Dùng danh mục món mẫu có nguồn và dữ liệu khẩu phần đủ để demo các hồ sơ mẫu. RAG giữ mục tiêu 10 tài liệu có nguồn xác minh.
 
-**Backend là nguồn quyết định** tổng kcal, macro, dị ứng, chi phí. Không dùng tổng do AI tự khai báo.
+Backend kiểm tra cấu trúc một ngày, mã món đang dùng và khẩu phần hợp lệ. Backend tính kcal ước tính từ kcal mỗi khẩu phần của món mẫu. Giao diện hiển thị kcal mục tiêu và tổng kcal ước tính cạnh nhau. Mức gần mục tiêu là tiêu chí tham khảo khi sinh và đánh giá.
 
-**Ràng buộc bắt buộc cho từng ngày (`MealPlanValidator`):**
-1. Món và nguyên liệu tồn tại, đang được phép dùng.
-2. Không chứa dị nguyên hoặc thực phẩm người dùng loại trừ.
-3. Phù hợp chế độ ăn.
-4. Đúng số bữa (3–5).
-5. Chi phí tính toán không vượt ngân sách ngày.
-6. Tổng kcal lệch không quá ±5% so với kcal mục tiêu của ngày.
-7. Khẩu phần hợp lệ: 0,5–3 khẩu phần chuẩn, bước 0,25, trừ khi món có giới hạn riêng.
+## 8. Luồng AI tạo gợi ý một ngày
 
-Ưu tiên mềm (không được dùng làm lý do từ chối thực đơn đã đạt ràng buộc bắt buộc): gần tỷ lệ macro, đa dạng món, ít lặp món trong tuần.
-
-±5% là sai lệch giữa kcal tính từ danh mục và mục tiêu ước tính, không chứng minh độ chính xác sinh lý.
-
-## 8. Luồng AI tạo và điều chỉnh thực đơn
-
-1. Kiểm tra quyền, điều kiện sử dụng, phiên bản hồ sơ.
-2. Backend lọc món ứng viên, lấy dinh dưỡng và chi phí.
-3. Gửi danh mục ứng viên và ràng buộc cho AI.
-4. AI trả ngày, bữa, `recipeId`, số khẩu phần, giải thích ngắn theo cấu trúc cố định (OpenAI Structured Outputs).
-5. Backend kiểm tra định dạng, ID, rồi **tính lại** toàn bộ ràng buộc. Structured Outputs không thay thế bước này.
-6. Chưa đạt: gửi lỗi cho AI sửa. Tối đa **3 lượt gọi/tác vụ**, gồm lượt đầu.
-7. Chỉ lưu khi **tất cả các ngày** đạt.
-8. Hết lượt hoặc quá **180 giây**: kết thúc với "chưa tìm được thực đơn đáp ứng yêu cầu". Không tự nới ngân sách, không bỏ dị ứng, không lưu kết quả chưa đạt.
-
-- Tác vụ chạy nền. Tác vụ hết hạn không được ghi kết quả đến muộn.
-- Thực đơn tuần không được báo thành công nếu chỉ tạo được một phần.
-- Thời lượng thực đơn: 1 hoặc 7 ngày.
-
-**Đổi món/khẩu phần:**
-- Kiểm tra lại cả ngày, không chỉ món thay thế.
-- Dùng phiên bản để phát hiện sửa đồng thời.
-- Hồ sơ/danh mục đổi trong lúc xử lý: kiểm tra lại trước khi lưu.
-- Thất bại: giữ nguyên bản trước.
-- Lịch sử giữ bản chụp cũ. Thực đơn xung đột dị ứng hiện tại được đánh dấu "không còn phù hợp".
-- Áp dụng lại hoặc sao chép thực đơn cũ: luôn kiểm tra theo hồ sơ hiện tại.
+1. Kiểm tra quyền và đọc hồ sơ có chỉ số ước tính hiện tại.
+2. Gửi kcal mục tiêu, mục tiêu dinh dưỡng và danh mục món ứng viên kèm kcal mỗi khẩu phần.
+3. Nhận bữa, `recipeId`, số khẩu phần và giải thích ngắn qua OpenAI Structured Outputs.
+4. Kiểm tra dữ liệu trả về, tính kcal ước tính và lưu gợi ý hoàn chỉnh để người dùng xem lại.
+5. Nếu cần thử lại do lỗi đầu ra, worker giới hạn tổng số lần gọi ở **3 lượt/tác vụ** trong **180 giây**. Khi hết lượt hoặc hết thời gian, báo lỗi và bỏ kết quả đến muộn.
 
 ## 9. RAG và Chatbot
 
 **Nạp tài liệu:**
+
 - PDF có lớp văn bản, tối đa 20 MB. PDF scan: báo rõ là không đọc được.
 - Lưu tên, tổ chức/tác giả, năm, URL (nếu có), phiên bản, checksum.
 - Tách theo trang và đoạn: khởi điểm 500 token/đoạn, chồng lấn 100 token.
@@ -148,15 +125,16 @@ Cân nặng mới trong nhật ký cập nhật hồ sơ và tạo phiên bản 
 - Tài liệu bị thu hồi không dùng cho câu trả lời mới (hiệu lực từ lượt hỏi mới). Lịch sử giữ dấu vết nguồn đã dùng.
 
 **Trả lời:**
+
 - Truy xuất tối đa 5 đoạn từ tài liệu đang hoạt động.
-- Ngữ cảnh gửi AI: câu hỏi, lịch sử hội thoại giới hạn, phần hồ sơ cần thiết.
+- Ngữ cảnh gửi AI gồm câu hỏi, lịch sử hội thoại giới hạn và phần hồ sơ cơ bản cần thiết. Dị ứng, thói quen ăn uống hay tình trạng cá nhân chỉ đi theo nội dung người dùng chủ động nêu trong hội thoại.
 - Backend đối chiếu mỗi trích dẫn với đoạn thực sự được truy xuất. Không tự tạo tài liệu tham khảo.
 - Không có bằng chứng phù hợp: nói rõ chưa đủ căn cứ.
 - Số liệu thực đơn lấy từ Backend. Kiến thức dinh dưỡng lấy từ tài liệu RAG.
 - Không chẩn đoán, kê đơn, đưa chế độ ăn điều trị.
 - Nội dung tài liệu và tin nhắn không được đổi quyền truy cập hay ra lệnh sửa dữ liệu (chống prompt injection).
 - Không gửi AI: tên, email, mật khẩu, toàn bộ lịch sử người dùng.
-- Đề xuất thay món qua Chatbot chỉ đổi thực đơn khi người dùng bấm áp dụng và Backend kiểm tra đạt.
+- Chatbot có thể giải thích gợi ý đã lưu bằng dữ liệu do Backend cung cấp. Luồng này chỉ đọc.
 - "Có trích dẫn" và "trích dẫn thực sự hỗ trợ nội dung" được đánh giá riêng.
 
 ## 10. Quyền riêng tư và quyền Admin
@@ -173,43 +151,44 @@ Cân nặng mới trong nhật ký cập nhật hồ sơ và tạo phiên bản 
 
 Tiền tố `/api/v1`, tài liệu hóa bằng OpenAPI.
 
-| Nhóm | Trách nhiệm |
-|---|---|
-| `/auth/*` | Đăng ký, đăng nhập, đăng xuất, đổi mật khẩu |
-| `/me/profile`, `/me/metrics` | Hồ sơ và chỉ số của người đang đăng nhập |
-| `/foods`, `/recipes` | Tra cứu danh mục |
-| `/meal-plan-jobs` | Tạo tác vụ, đọc trạng thái |
-| `/meal-plans/*` | Xem, áp dụng, đổi món, điều chỉnh, lịch sử |
-| `/progress/*` | Nhật ký và tổng hợp |
-| `/conversations/*` | Hội thoại, tin nhắn, nguồn |
-| `/feedback/*` | Phản hồi, chia sẻ, thu hồi |
-| `/admin/*` | Danh mục, tài liệu, tài khoản, phản hồi |
+| Nhóm                         | Trách nhiệm                                 |
+| ---------------------------- | ------------------------------------------- |
+| `/auth/*`                    | Đăng ký, đăng nhập, đăng xuất, đổi mật khẩu |
+| `/me/profile`, `/me/metrics` | Hồ sơ và chỉ số của người đang đăng nhập    |
+| `/foods`, `/recipes`         | Tra cứu danh mục                            |
+| `/meal-plan-jobs`            | Tạo tác vụ, đọc trạng thái                  |
+| `/meal-plans/*`              | Xem lại gợi ý một ngày đã lưu               |
+| `/progress/*`                | Nhật ký và tổng hợp                         |
+| `/conversations/*`           | Hội thoại, tin nhắn, nguồn                  |
+| `/feedback/*`                | Phản hồi, chia sẻ, thu hồi                  |
+| `/admin/*`                   | Danh mục, tài liệu, tài khoản, phản hồi     |
 
 - Tạo thực đơn trả `202` kèm `jobId`.
 - Trạng thái tác vụ: `QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `TIMED_OUT`. Chỉ `SUCCEEDED` trả `mealPlanId`.
 - Lỗi dùng cấu trúc chung: `code`, `message`, `fieldErrors`, `traceId`.
-- Màn hình bắt buộc: giới thiệu/xác thực; hồ sơ; tổng quan chỉ số; danh mục món; thực đơn ngày/tuần + lịch sử; tiến trình; Chatbot + nguồn; phản hồi; khu quản trị.
+- Màn hình bàn giao gồm giới thiệu/xác thực, hồ sơ, tổng quan chỉ số, danh mục món mẫu, tạo và xem lại gợi ý một ngày, Chatbot có nguồn và quản trị tài liệu RAG. Các màn hình P2 theo phạm vi tại mục 5.
 - Giao diện hoạt động ở 360, 768, 1440 px; dùng được bằng bàn phím; có trạng thái tải/rỗng/lỗi.
 
 ## 12. Cơ sở dữ liệu (30 bảng, PostgreSQL)
 
-Nguồn đầy đủ: `docs/DB_TABLES.md` (cột, kiểu, ràng buộc). Đây là **thiết kế đề xuất**, không phải trích xuất từ DB đã triển khai.
+Xem [thiết kế CSDL gốc](Danh_sach_30_bang_CSDL.md). Danh sách 30 bảng mô tả thiết kế đầy đủ. Migration Phase 2–3 chỉ triển khai phần phục vụ phạm vi đã chốt.
 
 **Quy ước:** khóa chính UUID. Thời điểm dùng `TIMESTAMPTZ`; ngày sinh và ngày thực đơn dùng `DATE`. Mặc định NOT NULL. Số thực dùng `NUMERIC(12,3)`. Mỗi hàng hồ sơ, nguyên liệu, công thức, thực đơn, tài liệu RAG là **một phiên bản**. User và Admin dùng chung `users`, phân biệt bằng `role`.
 
-| Nhóm | Bảng |
-|---|---|
-| Tài khoản | `users`, `sessions` |
-| Hồ sơ | `nutrition_profiles`, `dietary_preferences`, `allergies`, `profile_disliked_foods` |
-| Tính toán | `nutrition_rule_versions`, `calculation_snapshots` |
-| Danh mục | `data_sources`, `ingredients`, `nutrient_values`, `recipes`, `recipe_ingredients` |
-| Thực đơn | `meal_plan_jobs`, `meal_plans`, `meal_plan_days`, `meals`, `meal_plan_items` |
-| Tiến trình | `progress_records`, `water_entries`, `meal_consumptions` |
-| RAG | `rag_documents`, `rag_chunks` |
-| Hội thoại | `chat_conversations`, `chat_messages`, `chat_sources` |
+| Nhóm               | Bảng                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| Tài khoản          | `users`, `sessions`                                                                   |
+| Hồ sơ              | `nutrition_profiles`, `dietary_preferences`, `allergies`, `profile_disliked_foods`    |
+| Tính toán          | `nutrition_rule_versions`, `calculation_snapshots`                                    |
+| Danh mục           | `data_sources`, `ingredients`, `nutrient_values`, `recipes`, `recipe_ingredients`     |
+| Thực đơn           | `meal_plan_jobs`, `meal_plans`, `meal_plan_days`, `meals`, `meal_plan_items`          |
+| Tiến trình         | `progress_records`, `water_entries`, `meal_consumptions`                              |
+| RAG                | `rag_documents`, `rag_chunks`                                                         |
+| Hội thoại          | `chat_conversations`, `chat_messages`, `chat_sources`                                 |
 | Phản hồi, quản trị | `chat_feedback`, `shared_context_snapshots`, `shared_message_snapshots`, `audit_logs` |
 
 **Ràng buộc quan trọng:**
+
 - `nutrition_profiles`: UNIQUE(user_id, version); UNIQUE(user_id) WHERE is_current = true; chiều cao, cân nặng > 0.
 - `dietary_preferences`: `profile_id` UNIQUE; `meals_per_day` 3–5; `daily_budget` ≥ 0.
 - `allergies`: UNIQUE(profile_id, ingredient_id). `profile_disliked_foods`: PK ghép (preference_id, ingredient_id). Đối chiếu giữa các phiên bản nguyên liệu theo `ingredient_key`.
@@ -231,46 +210,47 @@ Nguồn đầy đủ: `docs/DB_TABLES.md` (cột, kiểu, ràng buộc). Đây l
 - `audit_logs`: `target_id` là UUID đa hình (không FK); không lưu mật khẩu, khóa API, hồ sơ/hội thoại nguyên văn.
 
 **Ràng buộc liên bảng:**
+
 - Hồ sơ, kết quả tính, tác vụ, thực đơn phải cùng người dùng; `calculation_id` phải khớp `profile_id`. Kiểm soát bằng FK ghép, trigger hoặc kiểm tra trong giao dịch.
-- Thực đơn hoàn chỉnh: đúng 1 hoặc 7 ngày; mỗi ngày 3–5 bữa; mỗi bữa ≥ 1 món. Kiểm tra trước khi commit giao dịch.
+- Gợi ý hoàn chỉnh trong phạm vi bàn giao gồm một ngày với các bữa có ít nhất một món. Kiểm tra trước khi commit giao dịch.
 - Không sửa hồi tố bản ghi đã dùng làm căn cứ lịch sử. Ngừng sử dụng/thu hồi thay vì xóa bản ghi được tham chiếu.
 - Chính sách xóa phải xác định cho từng FK. Tham chiếu tùy chọn tới tin nhắn gốc hoặc tài khoản có thể đặt NULL.
 
 ## 13. Yêu cầu phi chức năng (mục tiêu kiểm thử, chưa phải kết quả đạt)
 
-| Mã | Mục tiêu |
-|---|---|
-| NFR-01 | 100% thực đơn đã lưu qua kiểm tra ràng buộc; kcal từng ngày trong ±5% |
+| Mã     | Mục tiêu                                                                                                                                                                        |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NFR-01 | Gợi ý đã lưu có cấu trúc, mã món và khẩu phần hợp lệ. Backend tính kcal ước tính từ danh mục. Ghi nhận chênh lệch với mục tiêu khi đánh giá. |
 | NFR-02 | Chatbot p95 hoàn tất < 5 giây (100 yêu cầu, 5 đồng thời). Đo riêng thời gian nhận nội dung đầu tiên; không dùng nó thay cho thời gian hoàn tất. Không áp dụng cho thực đơn tuần |
-| NFR-03 | API thường p95 < 500 ms với 20 người dùng đồng thời, không gồm AI và xử lý tài liệu |
-| NFR-04 | Băm mật khẩu bằng thuật toán phù hợp; cookie HttpOnly, Secure khi HTTPS; chống CSRF; kiểm tra quyền ở mọi API dữ liệu riêng |
-| NFR-05 | Khóa API chỉ ở Backend; không ghi dữ liệu nhạy cảm vào log chung |
-| NFR-06 | Chatbot timeout 30 giây, cho thử lại; tác vụ thực đơn tối đa 180 giây; không trả thành công giả, không ghi dữ liệu một phần |
-| NFR-07 | 100% trích dẫn hiển thị ánh xạ tới nguồn đã truy xuất |
-| NFR-08 | Responsive, bàn phím, nhãn form, trạng thái tải/rỗng/lỗi |
-| NFR-09 | Giao dịch cho tạo/đổi thực đơn; FK; phiên bản; không ghi đè khi sửa đồng thời |
-| NFR-10 | Tách module; migration; OpenAPI; `.env.example`; test tự động |
-| NFR-11 | Ghi mã yêu cầu, phiên bản công thức, prompt, model, danh mục, trace ID, thời gian, token |
-| NFR-12 | Hướng dẫn sao lưu/khôi phục PostgreSQL; khôi phục thử ít nhất một lần |
+| NFR-03 | API thường p95 < 500 ms với 20 người dùng đồng thời, không gồm AI và xử lý tài liệu                                                                                             |
+| NFR-04 | Băm mật khẩu bằng thuật toán phù hợp; cookie HttpOnly, Secure khi HTTPS; chống CSRF; kiểm tra quyền ở mọi API dữ liệu riêng                                                     |
+| NFR-05 | Khóa API chỉ ở Backend; không ghi dữ liệu nhạy cảm vào log chung                                                                                                                |
+| NFR-06 | Chatbot timeout 30 giây, cho thử lại; tác vụ thực đơn tối đa 180 giây; không trả thành công giả, không ghi dữ liệu một phần                                                     |
+| NFR-07 | 100% trích dẫn hiển thị ánh xạ tới nguồn đã truy xuất                                                                                                                           |
+| NFR-08 | Responsive, bàn phím, nhãn form, trạng thái tải/rỗng/lỗi                                                                                                                        |
+| NFR-09 | Lưu gợi ý hoàn chỉnh trong một giao dịch và giữ toàn vẹn tham chiếu. |
+| NFR-10 | Tách module; migration; OpenAPI; `.env.example`; test tự động                                                                                                                   |
+| NFR-11 | Ghi mã yêu cầu, phiên bản công thức, prompt, model, danh mục, trace ID, thời gian, token                                                                                        |
+| NFR-12 | Hướng dẫn sao lưu/khôi phục PostgreSQL; khôi phục thử ít nhất một lần                                                                                                           |
 
 ## 14. Kiểm thử
 
 - Test tự động dùng **AI giả lập** để tái lập lỗi. Đánh giá thực nghiệm chạy riêng với OpenAI thật.
-- Nhóm ca bắt buộc (TC-01…TC-15): xác thực và phân quyền; truy cập chéo tài khoản; hồ sơ thiếu/ngoài phạm vi; đối chiếu BMI/năng lượng nghỉ/TDEE với số tính tay; thực đơn 1/7 ngày; AI trả ID sai/khẩu phần sai/từ chối; ngân sách quá thấp; đổi món vượt kcal/ngân sách và sửa đồng thời; thêm dị ứng sau khi tạo thực đơn; tài liệu scan/thu hồi/kho rỗng; trích dẫn giả và prompt injection; Admin chỉ đọc ngữ cảnh đã chia sẻ; nhật ký tiến trình; timeout/khởi động lại/gửi trùng/kết quả AI đến muộn; responsive, hiệu năng, xóa dữ liệu, khôi phục sao lưu.
-- Bốn ca tối thiểu cho `MealPlanValidator`: đạt, sai dị ứng, vượt ngân sách, sai kcal.
+- Ca bắt buộc gồm xác thực và phân quyền, truy cập chéo tài khoản, hồ sơ thiếu hoặc ngoài phạm vi, đối chiếu chỉ số tính tay, gợi ý một ngày, kiểm tra đầu ra AI, tài liệu scan hoặc thu hồi, kho RAG rỗng, trích dẫn giả, prompt injection, timeout, kết quả đến muộn, responsive, hiệu năng và khôi phục sao lưu. Đối chiếu mã TC gốc theo phần chức năng được chọn.
+- Với gợi ý, thử đầu ra hợp lệ, mã món sai, khẩu phần sai, AI từ chối và đối chiếu tổng kcal ước tính với phép tính tay. Kiểm tra dữ liệu gửi AI chỉ chứa các trường cần cho gợi ý.
 - Đánh giá thực: 30 hồ sơ mẫu; 50 câu hỏi RAG (có đáp án, thiếu nguồn, ngoài phạm vi, cố tác động quy tắc); 100 yêu cầu đo thời gian. Công bố model, cấu hình, số đồng thời, phân bố độ trễ.
-- Đo hai tỷ lệ riêng: tỷ lệ tạo thành công trên tổng tác vụ, và tỷ lệ thực đơn đã lưu đáp ứng ràng buộc. Không đạt chỉ tiêu bằng cách từ chối mọi yêu cầu khó.
+- Đo tỷ lệ tạo gợi ý thành công trên tổng tác vụ và phân bố chênh lệch giữa kcal ước tính của gợi ý với kcal mục tiêu.
 - Bảng truy vết: Yêu cầu → Use case → Module/API → Ca kiểm thử → Bằng chứng → Mục báo cáo. Ví dụ: `FR-06 → UC-Tạo thực đơn → Meal Planning → TC-05/06/07 → kết quả chạy → mục 4.3, 4.6`.
 
 ## 15. Chưa chốt (hỏi trước khi làm)
 
-1. **Lớp AI.** `PLAN` mô tả adapter OpenAI nằm trong Spring Boot. Lịch phase 2–3 nhắc "Python, Guardrails/Pydantic" nối OpenAI. Chưa rõ có dịch vụ Python riêng hay không. Ràng buộc đã thống nhất ở cả hai tài liệu: Spring Boot kiểm tra và quyết định lưu; dịch vụ AI không truy cập DB.
-2. **Phạm vi so với PLAN.** `PLAN` coi toàn bộ FR-01…FR-19 là phạm vi bàn giao; lịch phase xếp P0/P1/P2 và cho phép dời P2 sau 25/12. Làm theo P0 → P1 → P2.
+1. **Lớp AI — đã chốt:** dùng Spring AI trong adapter OpenAI của backend Spring Boot theo kiến trúc ở mục 4. Các mốc tích hợp nằm trong [kế hoạch 6 phase](Ke_hoach_TTCS_6_phase_va_User_Story.md).
+2. **Phạm vi bàn giao — đã chốt:** gợi ý một ngày theo kcal và đặc điểm hồ sơ, cùng Chatbot RAG có trích dẫn. Dùng mục 5 để xác định phần thực hiện của các FR trong đặc tả gốc.
 3. **FR-01 — đã chốt ngày 16/11/2026:** người dùng yêu cầu đăng ký và đổi mật khẩu ngay Phase 1, ngoài đăng nhập/đăng xuất và 2 tài khoản mẫu.
 4. **Model embedding và số chiều vector** chưa chọn.
 5. **Công cụ migration — đã chốt:** Flyway SQL, build bằng Maven Wrapper, Java 21.
-6. **Giá trị Phase 1:** `users.status`: ACTIVE/LOCKED. Định danh nguyên liệu dùng ACTIVE/INACTIVE; mọi dị ứng đều loại trừ, `severity=UNSPECIFIED` (không suy đoán mức độ). Dữ liệu mẫu dùng flag EGG, diet_tags OMNIVORE/VEGETARIAN/VEGAN. Các enum của thực đơn/RAG/chat/phản hồi và danh mục mở rộng vẫn cần chốt ở phase liên quan. Xem `docs/PHASE1.md`.
-7. **`meal_plan_days.is_applied`.** Ràng buộc "một kế hoạch áp dụng cho mỗi (người dùng, ngày)" không thể viết thành index đơn trên bảng này vì không có `user_id`. Cần cột phi chuẩn hóa, trigger hoặc kiểm tra trong giao dịch.
+6. **Hồ sơ Phase 1 — đã chốt:** CRUD hồ sơ cơ bản và chỉ số ước tính theo quy tắc có phiên bản. V4 giữ dữ liệu cũ và cho phép tạo hồ sơ mà không nhập điều kiện cá nhân hóa. Xem `docs/PHASE1.md`.
+7. **Áp dụng thực đơn:** thiết kế `meal_plan_days.is_applied` thuộc phạm vi mở rộng sau bàn giao.
 8. Cấu trúc thư mục, tên package, lệnh build/test/lint: đã điền ở mục 16.
 
 ## 16. Lệnh và cấu trúc repo (điền khi khởi tạo)
@@ -292,7 +272,7 @@ Nguồn đầy đủ: `docs/DB_TABLES.md` (cột, kiểu, ràng buộc). Đây l
 ## 17. Quy tắc làm việc cho agent
 
 - Làm theo phase hiện tại. Không bắt đầu P2 khi P0/P1 chưa đạt.
-- Mọi quy tắc nghiệp vụ (kcal, ngân sách, dị ứng) nằm trong Backend, có unit test. Frontend và AI không phải nơi quyết định.
+- Backend kiểm tra đầu ra AI và tính kcal ước tính từ dữ liệu món. Các phép tính và kiểm tra dữ liệu có unit test.
 - Mọi thay đổi schema đi qua migration. Không sửa DB bằng tay.
 - Không commit `.env`, khóa API, dữ liệu cá nhân thật.
 - Test dùng AI giả lập. Không gọi OpenAI thật trong test thường.

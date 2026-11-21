@@ -6,12 +6,11 @@ import vn.nutrition.calculation.NutritionCalculator;
 import vn.nutrition.profile.ProfileInput;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class NutritionCalculatorTest {
     @Test void US04_TC04_female_muscle_uses_correct_sex_goal_and_macro_parameters() throws Exception {
-        var p=new ProfileInput(0,LocalDate.of(1996,1,1),"FEMALE",new BigDecimal("160"),new BigDecimal("60"),"MODERATE","MUSCLE",true,false,false,false,"VEGETARIAN",new BigDecimal("100000"),3,List.of(),List.of(),"");
+        var p=new ProfileInput(0,LocalDate.of(1996,1,1),"FEMALE",new BigDecimal("160"),new BigDecimal("60"),"MODERATE","MUSCLE");
         var rule=new ObjectMapper().readTree("""
           {"activity":{"MODERATE":1.55},"goal":{"MUSCLE":1.1},"sex":{"FEMALE":-161},"weightCoefficient":10,"heightCoefficient":6.25,"ageCoefficient":5,
            "muscleProteinRatio":0.25,"muscleCarbRatio":0.45,"fatRatio":0.3,"proteinKcalPerGram":4,"carbKcalPerGram":4,"fatKcalPerGram":9,"waterMlPerKg":30}

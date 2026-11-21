@@ -57,9 +57,6 @@ class Phase1ApiTest {
         p.put("expectedVersion", 0); p.put("birthDate", LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusYears(30).toString());
         p.put("sexForFormula", "MALE"); p.put("heightCm", 175); p.put("weightKg", 70);
         p.put("activityLevel", "SEDENTARY"); p.put("goal", "MAINTAIN");
-        p.put("selfDeclaredHealthy", true); p.put("pregnant", false); p.put("breastfeeding", false); p.put("requiresTherapeuticDiet", false);
-        p.put("dietType", "OMNIVORE"); p.put("dailyBudget", 100000); p.put("mealsPerDay", 3);
-        p.put("allergyIngredientIds", new String[0]); p.put("dislikedIngredientIds", new String[0]); p.put("unresolvedAllergies", "");
         return p;
     }
     MvcResult save(Cookie session, Map<String, Object> profile, int expectedStatus) throws Exception {
@@ -122,33 +119,24 @@ class Phase1ApiTest {
             .andExpect(jsonPath("metrics.fatG").value(65.95)).andExpect(jsonPath("metrics.waterMl").value(2100))
             .andExpect(jsonPath("ruleVersion").value("phase1-v1"));
     }
-    @Test void US02_TC03_ineligible_profiles_never_receive_personal_targets() throws Exception {
+    @Test void US02_TC03_underage_profile_can_be_saved_without_adult_estimates() throws Exception {
         register("a@example.com"); Cookie a=login("a@example.com","SecurePassword1!");
-        int version=0;
-        for (String condition : new String[]{"underage","pregnant","breastfeeding","requiresTherapeuticDiet","selfDeclaredHealthy"}) {
-            Map<String,Object> p=profile(); p.put("expectedVersion",version++);
-            if(condition.equals("underage")) p.put("birthDate",LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusYears(18).plusDays(1).toString());
-            else p.put(condition,!condition.equals("selfDeclaredHealthy"));
-            save(a,p,200);
-            mvc.perform(get("/api/v1/me/metrics").cookie(a)).andExpect(status().isOk())
-                .andExpect(jsonPath("eligible").value(false)).andExpect(jsonPath("metrics").isEmpty());
-        }
+        var p=profile();
+        p.put("birthDate",LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusYears(18).plusDays(1).toString());
+        save(a,p,200);
+        mvc.perform(get("/api/v1/me/metrics").cookie(a)).andExpect(status().isOk())
+            .andExpect(jsonPath("adult").value(false)).andExpect(jsonPath("metrics").isEmpty());
         assertThat(db.queryForObject("SELECT count(*) FROM calculation_snapshots",Integer.class)).isZero();
-        var adult=profile();adult.put("expectedVersion",version);adult.put("birthDate",LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusYears(18).toString());
+        var adult=profile();adult.put("expectedVersion",1);adult.put("birthDate",LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusYears(18).toString());
         save(a,adult,200);
-        mvc.perform(get("/api/v1/me/metrics").cookie(a)).andExpect(jsonPath("eligible").value(true)).andExpect(jsonPath("metrics").isNotEmpty());
+        mvc.perform(get("/api/v1/me/metrics").cookie(a)).andExpect(jsonPath("adult").value(true)).andExpect(jsonPath("metrics").isNotEmpty());
     }
-    @Test void US02_TC03_validation_unknown_allergy_and_future_birth_date() throws Exception {
+    @Test void US02_TC03_validation_rejects_invalid_measurements_and_future_birth_date() throws Exception {
         register("a@example.com"); Cookie a=login("a@example.com","SecurePassword1!"); Map<String,Object> p=profile();
-        p.put("heightCm",0); p.put("mealsPerDay",6); p.put("dailyBudget",-1);
+        p.put("heightCm",0); p.put("weightKg",-1);
         JsonNode errors=json.readTree(save(a,p,400).getResponse().getContentAsString()).get("fieldErrors");
-        assertThat(errors.has("heightCm")).isTrue(); assertThat(errors.has("mealsPerDay")).isTrue(); assertThat(errors.has("dailyBudget")).isTrue();
+        assertThat(errors.has("heightCm")).isTrue(); assertThat(errors.has("weightKg")).isTrue();
         p=profile(); p.put("birthDate",LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusDays(1).toString()); save(a,p,400);
-        p=profile(); p.put("allergyIngredientIds",new String[]{"00000000-0000-0000-0000-000000000099"}); save(a,p,400);
-        p=profile(); p.put("unresolvedAllergies","Dị ứng món chưa rõ nguyên liệu");
-        JsonNode result=json.readTree(save(a,p,200).getResponse().getContentAsString());
-        assertThat(result.get("needsAllergyClarification").asBoolean()).isTrue();
-        assertThat(result.get("profile").get("unresolvedAllergies").asText()).isEqualTo("Dị ứng món chưa rõ nguyên liệu");
     }
     @Test void FR02_TC02_stale_tab_cannot_save_into_new_login_session() throws Exception {
         register("a@example.com"); register("b@example.com");
@@ -165,17 +153,20 @@ class Phase1ApiTest {
         assertThat(result.get("fieldErrors").has("heightCm")).isTrue();
         assertThat(db.queryForObject("SELECT count(*) FROM nutrition_profiles",Integer.class)).isZero();
     }
-    @Test void US02_TC03_inactive_ingredient_remains_visible_and_excluded() throws Exception {
-        java.util.UUID source=java.util.UUID.randomUUID(),ingredient=java.util.UUID.randomUUID();
-        db.update("INSERT INTO data_sources VALUES(?,?,?, ?,now())",source,"Synthetic test identity","Test fixture","not nutritional data");
-        db.update("INSERT INTO ingredients VALUES(?,?,?,1,?,?,?,'[]',0,now(),'ACTIVE')",ingredient,source,ingredient,"Test ingredient","TEST","TEST");
+    @Test void US02_TC02_delete_current_profile_is_versioned_and_allows_recreation() throws Exception {
         register("a@example.com");Cookie a=login("a@example.com","SecurePassword1!");
-        var p=profile();p.put("allergyIngredientIds",new String[]{ingredient.toString()});save(a,p,200);
-        db.update("UPDATE ingredients SET status='INACTIVE' WHERE id=?",ingredient);
-        String choices=mvc.perform(get("/api/v1/ingredients").cookie(a)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(choices).contains(ingredient.toString());
+        var p=profile();save(a,p,200);
         p.put("expectedVersion",1);p.put("weightKg",71);save(a,p,200);
-        mvc.perform(get("/api/v1/me/profile").cookie(a)).andExpect(jsonPath("profile.allergyIngredientIds[0]").value(ingredient.toString()));
+        String context=sessionContexts.get(a.getValue());
+        mvc.perform(delete("/api/v1/me/profile").param("expectedVersion","1").cookie(a)
+            .header("X-Session-Context",context).with(csrf())).andExpect(status().isConflict());
+        mvc.perform(delete("/api/v1/me/profile").param("expectedVersion","2").cookie(a)
+            .header("X-Session-Context",context).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/me/profile").cookie(a)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/me/metrics").cookie(a)).andExpect(status().isNotFound());
+        var recreated=save(a,profile(),200);
+        assertThat(json.readTree(recreated.getResponse().getContentAsString()).path("version").asInt()).isEqualTo(3);
+        assertThat(db.queryForObject("SELECT count(*) FROM nutrition_profiles",Integer.class)).isEqualTo(3);
     }
     @Test void NFR09_TC02_concurrent_profile_saves_have_exactly_one_winner() throws Exception {
         register("a@example.com");Cookie a=login("a@example.com","SecurePassword1!");save(a,profile(),200);

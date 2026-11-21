@@ -31,12 +31,9 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
   return result as T;
 }
 export type Account = { id: string; email: string; displayName: string; role: "USER" | "ADMIN" };
-export type Ingredient = { id: string; name: string; status: "ACTIVE" | "INACTIVE" };
 export type Profile = {
   expectedVersion: number; birthDate: string; sexForFormula: string; heightCm: number; weightKg: number;
-  activityLevel: string; goal: string; selfDeclaredHealthy: boolean; pregnant: boolean; breastfeeding: boolean;
-  requiresTherapeuticDiet: boolean; dietType: string; dailyBudget: number; mealsPerDay: number;
-  allergyIngredientIds: string[]; dislikedIngredientIds: string[]; unresolvedAllergies: string;
+  activityLevel: string; goal: string;
 };
 export type Metrics = { bmi: number; estimatedBmr: number; tdee: number; targetKcal: number; proteinG: number; carbohydrateG: number; fatG: number; waterMl: number };
-export type ProfileView = { id: string; version: number; profile: Profile; eligible: boolean; eligibilityReasons: string[]; needsAllergyClarification: boolean; metrics: Metrics | null; ruleVersion: string | null; formulaName: string | null; sourceReference: string | null; calculatedAt: string | null };
+export type ProfileView = { id: string; version: number; profile: Profile; adult: boolean; metrics: Metrics | null; ruleVersion: string | null; formulaName: string | null; sourceReference: string | null; calculatedAt: string | null };
