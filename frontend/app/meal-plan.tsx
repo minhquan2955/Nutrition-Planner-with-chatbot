@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { Notice } from "./components";
+import { Icon } from "./icons";
 
 type Job = {
   jobId: string;
@@ -33,7 +34,7 @@ type Recipe = {
   ingredients: { name: string; preparationState: string; gramsPerServing: number; kcalPer100g: number; source: string }[];
 };
 
-const errors: Record<string, string> = {
+const errorMessages: Record<string, string> = {
   MEAL_AI_INVALID_OUTPUT: "Gợi ý nhận được chưa hợp lệ. Bạn có thể thử lại.",
   MEAL_AI_UNAVAILABLE: "Dịch vụ tạo gợi ý đang bận. Vui lòng thử lại.",
   MEAL_AI_NOT_CONFIGURED: "Tính năng tạo gợi ý chưa được cấu hình trên máy chủ.",
@@ -109,66 +110,124 @@ export function MealPlanScreen({ targetKcal, hasProfile, editProfile }: {
   }, [pendingJobId, loadFailed, loading]);
 
   async function create() {
-    setCreating(true);
-    setError(null);
-    setLoadFailed(false);
+    setCreating(true); setError(null); setLoadFailed(false);
     try { setJob(await api<Job>("/meal-plan-jobs", "POST")); }
     catch (e) { setError(e); }
     finally { setCreating(false); }
   }
 
   const failed = job?.status === "FAILED" || job?.status === "TIMED_OUT";
-  return <>
-    <header className="page-heading">
-      <div><h1>Thực đơn một ngày</h1><p className="muted">Gợi ý bữa ăn theo kcal mục tiêu trong hồ sơ của bạn.</p></div>
-    </header>
-    <section className="panel meal-actions" aria-label="Tạo gợi ý thực đơn">
-      <div className="meal-actions-row">
+
+  return (
+    <>
+      <div className="page-heading">
         <div>
-          <h2>Gợi ý bữa ăn</h2>
-          {targetKcal !== undefined ? <p className="muted">Mục tiêu hiện tại · {kcal.format(targetKcal)} kcal/ngày</p>
-            : <p className="muted">{hasProfile ? "Cần chỉ số ước tính dành cho người trưởng thành." : "Hãy lưu hồ sơ để có mục tiêu năng lượng."}</p>}
+          <h1>Thực đơn một ngày</h1>
+          <p className="muted">Gợi ý bữa ăn theo kcal mục tiêu trong hồ sơ của bạn.</p>
         </div>
-        {targetKcal !== undefined ? <button className="primary" onClick={create} disabled={loading || creating || !!pendingJobId || loadFailed}>
-          {plan ? "Tạo gợi ý mới" : "Tạo gợi ý"}
-        </button> : <button className="secondary" onClick={editProfile}>Xem hồ sơ</button>}
       </div>
-      <p className="muted">Gợi ý mang tính tham khảo và không kiểm tra dị ứng, thực phẩm loại trừ hoặc ngân sách.</p>
-      {loading && <p role="status">Đang tải gợi ý đã lưu…</p>}
-      {!loading && !loadFailed && (creating || pendingJobId) && <p role="status">
-        {job?.status === "QUEUED" ? "Đang chờ tạo gợi ý…" : "Đang tạo gợi ý…"}
-      </p>}
-      {failed && !creating && <div className="notice error" role="alert">
-        {errors[job.errorCode ?? ""] ?? "Không thể tạo gợi ý. Vui lòng thử lại."}
-        <small>Mã tra cứu {job.jobId}</small>
-      </div>}
-      <Notice error={error} />
-      {loadFailed && <button className="secondary" onClick={() => {
-        setError(null);
-        setLoading(true);
-        setLoadFailed(false);
-        setRefresh(value => value + 1);
-      }}>Tải lại gợi ý</button>}
-    </section>
-    {plan && <section className="panel meal-result" aria-labelledby="meal-result-heading">
-      <div className="panel-heading"><h2 id="meal-result-heading">Gợi ý đã lưu</h2>
-        <time dateTime={plan.date}>{plan.date.split("-").reverse().join("/")}</time>
-      </div>
-      <dl className="meal-totals">
-        <div><dt>Kcal mục tiêu</dt><dd>{kcal.format(plan.targetKcal)} kcal</dd></div>
-        <div><dt>Tổng ước tính</dt><dd>{kcal.format(plan.totalKcal)} kcal</dd></div>
-      </dl>
-      <p className="muted">{plan.explanation}</p>
-      {plan.meals.map(meal => <section className="meal-group" key={meal.slot}>
-        <h3>{mealLabels[meal.slot]}</h3>
-        <ul>{meal.items.map(item => <li className="meal-item" key={item.recipeId}>
-          <div><strong>{item.recipeName}</strong><small>{quantity.format(item.servings)} khẩu phần</small></div>
-          <span>{kcal.format(item.kcal)} kcal</span>
-        </li>)}</ul>
-      </section>)}
-    </section>}
-    <RecipeList />
-  </>;
+
+      <section className="panel meal-actions" aria-label="Tạo gợi ý thực đơn">
+        <div className="meal-actions-row">
+          <div>
+            <h2>Gợi ý bữa ăn</h2>
+            {targetKcal !== undefined
+              ? <p className="muted" style={{ marginTop: 6 }}>Mục tiêu hiện tại · {kcal.format(targetKcal)} kcal/ngày</p>
+              : <p className="muted" style={{ marginTop: 6 }}>{hasProfile ? "Cần chỉ số ước tính dành cho người trưởng thành." : "Hãy lưu hồ sơ để có mục tiêu năng lượng."}</p>
+            }
+          </div>
+          <div style={{ flexShrink: 0 }}>
+            {targetKcal !== undefined
+              ? (
+                <button className="primary" onClick={create} disabled={loading || creating || !!pendingJobId || loadFailed}>
+                  <Icon name="refresh-cw" size={15} />
+                  {plan ? "Tạo gợi ý mới" : "Tạo gợi ý"}
+                </button>
+              )
+              : (
+                <button className="secondary" onClick={editProfile}>
+                  Xem hồ sơ
+                  <Icon name="arrow-right" size={15} />
+                </button>
+              )
+            }
+          </div>
+        </div>
+
+        <p className="muted meal-status" style={{ marginTop: 12 }}>
+          Gợi ý mang tính tham khảo và không kiểm tra dị ứng, thực phẩm loại trừ hoặc ngân sách.
+        </p>
+
+        {loading && <p role="status" className="muted" style={{ marginTop: 12 }}>Đang tải gợi ý đã lưu…</p>}
+        {!loading && !loadFailed && (creating || pendingJobId) && (
+          <p role="status" className="muted" style={{ marginTop: 12 }}>
+            {job?.status === "QUEUED" ? "Đang chờ tạo gợi ý…" : "Đang tạo gợi ý…"}
+          </p>
+        )}
+
+        {failed && !creating && (
+          <div className="notice error" role="alert" style={{ marginTop: 14 }}>
+            {errorMessages[job.errorCode ?? ""] ?? "Không thể tạo gợi ý. Vui lòng thử lại."}
+            <small>Mã tra cứu {job.jobId}</small>
+          </div>
+        )}
+
+        <Notice error={error} />
+
+        {loadFailed && (
+          <button className="secondary" style={{ marginTop: 12 }} onClick={() => {
+            setError(null); setLoading(true); setLoadFailed(false); setRefresh(v => v + 1);
+          }}>
+            <Icon name="refresh-cw" size={15} />
+            Tải lại gợi ý
+          </button>
+        )}
+      </section>
+
+      {plan && (
+        <section className="panel" style={{ marginTop: 20 }} aria-labelledby="meal-result-heading">
+          <div className="panel-heading">
+            <h2 id="meal-result-heading">Gợi ý đã lưu</h2>
+            <time dateTime={plan.date} style={{ fontSize: 13, color: "var(--mute)" }}>
+              {plan.date.split("-").reverse().join("/")}
+            </time>
+          </div>
+
+          <dl className="meal-totals">
+            <div className="meal-total-cell">
+              <dt>Kcal mục tiêu</dt>
+              <dd className="target">{kcal.format(plan.targetKcal)} kcal</dd>
+            </div>
+            <div className="meal-total-cell">
+              <dt>Tổng ước tính</dt>
+              <dd>{kcal.format(plan.totalKcal)} kcal</dd>
+            </div>
+          </dl>
+
+          <p className="muted" style={{ fontSize: 14, lineHeight: 1.6 }}>{plan.explanation}</p>
+
+          {plan.meals.map(meal => (
+            <section className="meal-group" key={meal.slot}>
+              <div className="meal-group-title">{mealLabels[meal.slot]}</div>
+              <ul className="meal-list">
+                {meal.items.map(item => (
+                  <li className="meal-item" key={item.recipeId}>
+                    <div>
+                      <div className="meal-item-name">{item.recipeName}</div>
+                      <div className="meal-item-serving">{quantity.format(item.servings)} khẩu phần</div>
+                    </div>
+                    <span className="meal-kcal">{kcal.format(item.kcal)} kcal</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </section>
+      )}
+
+      <RecipeList />
+    </>
+  );
 }
 
 function RecipeList() {
@@ -178,29 +237,41 @@ function RecipeList() {
 
   async function loadRecipes() {
     if (recipes || loading) return;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try { setRecipes(await api<Recipe[]>("/recipes")); }
     catch (e) { setError(e); }
     finally { setLoading(false); }
   }
 
-  return <details className="panel recipe-catalog" onToggle={event => {
-    if (event.currentTarget.open) void loadRecipes();
-  }}>
-    <summary>Danh mục món mẫu</summary>
-    <Notice error={error} />
-    {error != null && <button className="secondary" onClick={loadRecipes}>Tải lại danh mục</button>}
-    {loading && <p role="status">Đang tải danh mục…</p>}
-    {recipes?.length === 0 && <p className="muted">Chưa có món mẫu.</p>}
-    {recipes?.map(recipe => <details key={recipe.id} className="recipe">
-      <summary>{recipe.name} · {kcal.format(recipe.kcalPerServing)} kcal/khẩu phần</summary>
-      <p>{recipe.instructions}</p>
-      <p className="muted">{recipe.source}</p>
-      <ul>{recipe.ingredients.map(ingredient => <li key={ingredient.name}>
-        <strong>{ingredient.name}</strong> · {quantity.format(ingredient.gramsPerServing)} g · {kcal.format(ingredient.kcalPer100g)} kcal/100 g
-        <small>{ingredient.preparationState} · {ingredient.source}</small>
-      </li>)}</ul>
-    </details>)}
-  </details>;
+  return (
+    <details className="panel recipe-catalog" style={{ marginTop: 20 }} onToggle={event => {
+      if (event.currentTarget.open) void loadRecipes();
+    }}>
+      <summary>Danh mục món mẫu</summary>
+      <Notice error={error} />
+      {error != null && (
+        <button className="secondary" style={{ marginTop: 12 }} onClick={loadRecipes}>
+          <Icon name="refresh-cw" size={15} />
+          Tải lại danh mục
+        </button>
+      )}
+      {loading && <p role="status" className="muted" style={{ marginTop: 10 }}>Đang tải danh mục…</p>}
+      {recipes?.length === 0 && <p className="muted" style={{ marginTop: 10 }}>Chưa có món mẫu.</p>}
+      {recipes?.map(recipe => (
+        <details key={recipe.id} className="recipe">
+          <summary>{recipe.name} · {kcal.format(recipe.kcalPerServing)} kcal/khẩu phần</summary>
+          <p>{recipe.instructions}</p>
+          <p className="muted">{recipe.source}</p>
+          <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0" }}>
+            {recipe.ingredients.map(ingredient => (
+              <li key={ingredient.name}>
+                <strong>{ingredient.name}</strong> · {quantity.format(ingredient.gramsPerServing)} g · {kcal.format(ingredient.kcalPer100g)} kcal/100 g
+                <small style={{ display: "block", color: "var(--mute)", marginTop: 2 }}>{ingredient.preparationState} · {ingredient.source}</small>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
+    </details>
+  );
 }
