@@ -26,6 +26,11 @@ services:
       DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      RAG_MINIMUM_SIMILARITY: ${RAG_MINIMUM_SIMILARITY:-0.30}
+      RAG_STORAGE: /app/storage/rag
+    volumes:
+      - rag_pdf_data:/app/storage/rag
     depends_on:
       db:
         condition: service_healthy
@@ -46,3 +51,4 @@ services:
       - backend
 volumes:
   postgres_data:
+  rag_pdf_data:

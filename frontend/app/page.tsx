@@ -2,7 +2,15 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type Account, type ProfileView } from "../lib/api";
 import { AuthForm, Dashboard, Notice, PasswordForm, ProfileForm } from "./components";
+import { ChatScreen } from "./chat";
 import { MealPlanScreen } from "./meal-plan";
+import { RagDocumentsScreen } from "./rag-documents";
+
+const navigation = [
+  ["dashboard", "◫", "Tổng quan"], ["profile", "◉", "Hồ sơ"], ["meals", "≡", "Thực đơn"],
+  ["chat", "◌", "Chatbot"], ["password", "⌑", "Mật khẩu"], ["documents", "□", "Tài liệu RAG"],
+] as const;
+type Screen = typeof navigation[number][0];
 
 async function fetchProfile() {
   try { return await api<ProfileView>("/me/profile"); }
@@ -12,7 +20,7 @@ async function fetchProfile() {
 export default function Page() {
   const [account, setAccount] = useState<Account | null>(null);
   const [profile, setProfile] = useState<ProfileView | null>(null);
-  const [screen, setScreen] = useState<"dashboard" | "profile" | "meals" | "password">("dashboard");
+  const [screen, setScreen] = useState<Screen>("dashboard");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
@@ -51,11 +59,10 @@ export default function Page() {
   }
   const brand = <div className="brand"><span className="brand-icon" aria-hidden="true">↗</span><span>Nutri<span className="brand-light">Plan</span></span></div>;
   if (loading) return <main className="loading" role="status">{brand}<p>Đang tải hồ sơ của bạn…</p></main>;
-  if (!account) return <main className="auth-layout"><section className="intro">{brand}<div className="intro-copy"><span className="eyebrow">DINH DƯỠNG, THEO CÁCH CỦA BẠN</span><h2>Hiểu cơ thể.<br />Chọn điều<br /><span>phù hợp.</span></h2><p>Mỗi người có một điểm bắt đầu khác nhau.<br />Hành trình của bạn bắt đầu từ một hồ sơ.</p><div className="intro-steps"><span>01 <b>Hồ sơ</b></span><i /><span>02 <b>Chỉ số</b></span><i /><span>03 <b>Mục tiêu</b></span></div></div><div className="intro-footer"><span className="small-dot" /> Dành cho người trưởng thành khỏe mạnh</div></section><section className="auth-area"><Notice error={error} /><AuthForm onLogin={login} notice={notice} /><footer>Đồ án nhóm 9 · Giai đoạn 2</footer></section></main>;
-  return <div className="app-layout"><a className="skip-link" href="#content">Đến nội dung chính</a><aside className="sidebar">{brand}<div className="workspace-label">KHÔNG GIAN CỦA BẠN</div><nav aria-label="Điều hướng chính">{([
-    ["dashboard", "◫", "Tổng quan"], ["profile", "◉", "Hồ sơ"], ["meals", "≡", "Thực đơn"], ["password", "⌑", "Mật khẩu"],
-  ] as const).map(([id, icon, label]) => <button key={id} className={screen === id ? "nav-item active" : "nav-item"} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); setError(null); setNotice(""); }}><span aria-hidden="true">{icon}</span>{label}{screen === id && <i />}</button>)}</nav><div className="sidebar-note"><span aria-hidden="true">✳</span><strong>Từng bước, mỗi ngày.</strong><p>Bắt đầu từ việc hiểu cơ thể và thói quen của chính mình.</p></div><div className="sidebar-footer">ĐỒ ÁN NHÓM 9 <span>PHASE 02</span></div></aside>
-    <div className="main-layout"><header className="topbar"><span className="breadcrumb">Cá nhân <span>/</span> {{ dashboard: "Tổng quan", profile: "Hồ sơ", meals: "Thực đơn", password: "Bảo mật" }[screen]}</span><div className="account"><span className="avatar" aria-hidden="true">{account.displayName.slice(0, 1).toUpperCase()}</span><div><strong>{account.displayName}</strong><small>{account.role === "ADMIN" ? "Quản trị viên" : "Tài khoản cá nhân"}</small></div><button className="text-button logout" onClick={logout}>Đăng xuất</button></div></header>
+  if (!account) return <main className="auth-layout"><section className="intro">{brand}<div className="intro-copy"><span className="eyebrow">DINH DƯỠNG, THEO CÁCH CỦA BẠN</span><h2>Hiểu cơ thể.<br />Chọn điều<br /><span>phù hợp.</span></h2><p>Mỗi người có một điểm bắt đầu khác nhau.<br />Hành trình của bạn bắt đầu từ một hồ sơ.</p><div className="intro-steps"><span>01 <b>Hồ sơ</b></span><i /><span>02 <b>Chỉ số</b></span><i /><span>03 <b>Mục tiêu</b></span></div></div><div className="intro-footer"><span className="small-dot" /> Dành cho người trưởng thành khỏe mạnh</div></section><section className="auth-area"><Notice error={error} /><AuthForm onLogin={login} notice={notice} /><footer>Đồ án nhóm 9 · Giai đoạn 3</footer></section></main>;
+  return <div className="app-layout"><a className="skip-link" href="#content">Đến nội dung chính</a><aside className="sidebar">{brand}<div className="workspace-label">KHÔNG GIAN CỦA BẠN</div><nav aria-label="Điều hướng chính">{navigation.filter(([id]) => id !== "documents" || account.role === "ADMIN")
+    .map(([id, icon, label]) => <button key={id} className={screen === id ? "nav-item active" : "nav-item"} aria-current={screen === id ? "page" : undefined} onClick={() => { setScreen(id); setError(null); setNotice(""); }}><span aria-hidden="true">{icon}</span>{label}{screen === id && <i />}</button>)}</nav><div className="sidebar-note"><span aria-hidden="true">✳</span><strong>Từng bước, mỗi ngày.</strong><p>Bắt đầu từ việc hiểu cơ thể và thói quen của chính mình.</p></div><div className="sidebar-footer">ĐỒ ÁN NHÓM 9 <span>PHASE 03</span></div></aside>
+    <div className="main-layout"><header className="topbar"><span className="breadcrumb">{screen === "documents" ? "Quản trị" : "Cá nhân"} <span>/</span> {screen === "password" ? "Bảo mật" : navigation.find(([id]) => id === screen)?.[2]}</span><div className="account"><span className="avatar" aria-hidden="true">{account.displayName.slice(0, 1).toUpperCase()}</span><div><strong>{account.displayName}</strong><small>{account.role === "ADMIN" ? "Quản trị viên" : "Tài khoản cá nhân"}</small></div><button className="text-button logout" onClick={logout}>Đăng xuất</button></div></header>
       <main id="content" className="content"><Notice error={error} />{notice && <div className="notice" role="status">{notice}</div>}
         {screen === "dashboard" && <Dashboard view={profile} edit={() => { setScreen("profile"); setNotice(""); }} />}
         {screen === "profile" && <ProfileForm key={profile?.version || 0} current={profile}
@@ -64,6 +71,8 @@ export default function Page() {
           onReload={async () => { await loadProfile(); }} />}
         {screen === "meals" && <MealPlanScreen targetKcal={profile?.metrics?.targetKcal}
           hasProfile={!!profile} editProfile={() => setScreen("profile")} />}
+        {screen === "chat" && <ChatScreen />}
+        {screen === "documents" && account.role === "ADMIN" && <RagDocumentsScreen />}
         {screen === "password" && <PasswordForm onChanged={() => signedOut("Đã đổi mật khẩu và đăng xuất tất cả phiên. Vui lòng đăng nhập lại.")} />}
         <footer className="content-footer">NutriPlan · Thông tin tham khảo cho đồ án, không thay thế tư vấn chuyên môn.</footer>
       </main>

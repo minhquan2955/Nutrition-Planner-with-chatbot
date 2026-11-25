@@ -4,7 +4,8 @@ export class ApiError extends Error {
 let sessionContext = "";
 export async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const multipart = body instanceof FormData;
+  if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
   if (method !== "GET") {
     if (sessionContext) headers["X-Session-Context"] = sessionContext;
     const response = await fetch("/api/v1/auth/csrf", { credentials: "same-origin", cache: "no-store" });
@@ -12,7 +13,7 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
     const csrf = await response.json();
     headers[csrf.headerName] = csrf.token;
   }
-  const response = await fetch(`/api/v1${path}`, { method, headers, credentials: "same-origin", cache: "no-store", body: body === undefined ? undefined : JSON.stringify(body) });
+  const response = await fetch(`/api/v1${path}`, { method, headers, credentials: "same-origin", cache: "no-store", body: multipart ? body : JSON.stringify(body) });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: "Không kết nối được máy chủ. Vui lòng thử lại." }));
     if (error.code === "SESSION_CHANGED" || (response.status === 401 && path !== "/auth/login" && sessionContext)) {

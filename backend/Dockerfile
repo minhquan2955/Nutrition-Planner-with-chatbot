@@ -6,6 +6,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
+RUN mkdir -p /app/storage/rag && chown -R app:app /app/storage
 COPY --from=build /app/target/nutrition-api-0.1.0.jar app.jar
 USER app
 EXPOSE 8080

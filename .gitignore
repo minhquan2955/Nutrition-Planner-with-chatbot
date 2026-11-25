@@ -13,4 +13,5 @@ target/
 playwright-report/
 test-results/
 backups/
+storage/rag/
 .DS_Store

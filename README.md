@@ -1,6 +1,6 @@
 # NutriPlan — Nutrition Planner with Chatbot
 
-Đồ án nhóm 9 về tư vấn dinh dưỡng cá nhân hóa. Phase 1 cung cấp **tài khoản, hồ sơ và chỉ số**. Phase 2 bổ sung **danh mục món mẫu và gợi ý thực đơn một ngày**. Chatbot RAG thuộc Phase 3.
+Đồ án nhóm 9 về tư vấn dinh dưỡng cá nhân hóa. Phase 1 cung cấp **tài khoản, hồ sơ và chỉ số**. Phase 2 bổ sung **danh mục món mẫu và gợi ý thực đơn một ngày**. Phase 3 bổ sung **Chatbot có trích dẫn và quản trị nguồn PDF**.
 
 ## Chạy bằng Docker (khuyến nghị)
 
@@ -49,6 +49,10 @@ Trên Linux/macOS: dùng `./mvnw` thay cho `./mvnw.cmd` (`chmod +x backend/mvnw`
 
 Đăng nhập, lưu hồ sơ người trưởng thành và mở **Thực đơn → Tạo gợi ý**. Màn hình hiển thị kcal mục tiêu cạnh tổng kcal ước tính và các món theo ba bữa. Có thể xem lại gợi ý gần nhất và mở danh mục để đối chiếu định lượng, trạng thái nguyên liệu và nguồn kcal. Xem [dữ liệu và kiểm thử Phase 2](docs/PHASE2.md).
 
+## Chatbot RAG
+
+Backend dùng thêm `OPENAI_EMBEDDING_MODEL`, mặc định `text-embedding-3-small` với 1.536 chiều. Đăng nhập Admin để nạp và duyệt PDF trong **Tài liệu RAG**. Người dùng hỏi trong **Chatbot** và mở đúng trang từ trích dẫn. Xem [các bước nạp corpus và câu hỏi nghiệm thu](docs/PHASE3.md).
+
 ## Kiểm thử
 
 ```powershell
@@ -64,7 +68,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Backend test dùng PostgreSQL thật trong các schema riêng **phase1_test** và **phase2_test**, và xóa dữ liệu tài khoản trong schema kiểm thử trước từng ca. Mặc định test dùng cổng 5433 với credentials của application.yml. Không hướng schema test vào dữ liệu thật. Test tự động dùng phản hồi AI giả lập.
+Backend test dùng PostgreSQL thật trong các schema riêng có hậu tố `_test` và có thể xóa dữ liệu trong các schema đó trước từng ca. Cổng mặc định là 5433. Đặt `TEST_DB_PORT` nếu dùng container kiểm thử ở cổng khác. Test tự động dùng phản hồi AI giả lập.
 
 Playwright đăng ký tài khoản `*@example.com` giả, kiểm tra lưu/tải lại hồ sơ, đổi mật khẩu, đăng xuất, phiên cũ và bố cục ở 360/768/1440. Test trình duyệt tạo dữ liệu trên database app đang chạy; chỉ chạy với môi trường demo. Đổi URL bằng `$env:E2E_BASE_URL='http://localhost:3001'`. Ảnh và trace ở `frontend/test-results`, báo cáo HTML ở `frontend/playwright-report`.
 
@@ -98,8 +102,11 @@ Ví dụ PowerShell, mặc định user/database `nutrition`; sửa tên tương
 
 ```powershell
 New-Item -ItemType Directory -Force backups
-docker compose exec -T db pg_dump -U nutrition -d nutrition --exclude-schema=phase1_test --exclude-schema=phase2_test -Fc -f /tmp/nutrition.dump
+docker compose stop backend
+docker compose exec -T db pg_dump -U nutrition -d nutrition --exclude-schema='*_test' -Fc -f /tmp/nutrition.dump
 docker compose cp db:/tmp/nutrition.dump ./backups/nutrition.dump
+docker compose cp backend:/app/storage/rag ./backups/rag
+docker compose start backend
 # Khôi phục vào database MỚI, không ghi đè database đang dùng
 docker compose exec -T db createdb -U nutrition nutrition_restore_check
 docker compose exec -T db pg_restore -U nutrition -d nutrition_restore_check --no-owner /tmp/nutrition.dump
@@ -107,6 +114,8 @@ docker compose exec -T db psql -U nutrition -d nutrition_restore_check -c 'SELEC
 ```
 
 Nếu khôi phục từ file đã lưu trên máy: `docker compose cp ./backups/nutrition.dump db:/tmp/nutrition.dump` trước bước restore. Dùng một tên database mới nếu `nutrition_restore_check` đã tồn tại. File backup chứa dữ liệu tài khoản, không commit. Khôi phục ứng dụng thật cần cấu hình `DATABASE_URL`/`POSTGRES_DB` trỏ tới DB đã kiểm tra.
+
+Để kiểm tra khôi phục PDF, dùng kho tệp mới cùng database khôi phục. Sao chép nội dung `backups/rag` vào kho đó, đặt `RAG_STORAGE` cho backend chạy trực tiếp hoặc gắn kho đã khôi phục tại `/app/storage/rag` trong Compose. So khớp SHA-256 của bản gốc với metadata rồi kiểm tra mở PDF từ tài liệu và hội thoại mẫu.
 
 ## Cấu trúc và tài liệu
 
@@ -134,6 +143,6 @@ flowchart LR
 
 Phase 2 dùng Spring AI để gợi ý bữa ăn tham khảo cho một ngày theo kcal mục tiêu và mục tiêu dinh dưỡng trong hồ sơ cơ bản. Backend kiểm tra đầu ra và hiển thị tổng kcal ước tính cạnh mục tiêu. Gợi ý không kiểm tra dị ứng, thực phẩm loại trừ hoặc ngân sách.
 
-Phase 3 dự kiến mở rộng adapter OpenAI cho embedding và hỏi đáp RAG. Người dùng có thể trao đổi về dị ứng, thói quen ăn uống và tình trạng cá nhân trong hội thoại. Backend truy xuất đoạn từ PDF đã duyệt và xác minh mã đoạn trước khi hiển thị trích dẫn. Phase 4 dự kiến bổ sung danh sách gợi ý đã lưu và hỏi Chatbot về một gợi ý.
+Backend truy xuất đoạn từ PDF đã duyệt và xác minh mã đoạn trước khi hiển thị trích dẫn. Người dùng có thể trao đổi về dị ứng, thói quen ăn uống và tình trạng cá nhân trong hội thoại. Phase 4 dự kiến bổ sung danh sách gợi ý đã lưu và hỏi Chatbot về một gợi ý.
 
 Khi để trống biến OpenAI, vẫn có thể dùng hồ sơ, chỉ số và danh mục mẫu. Gợi ý thực đơn mới chỉ khả dụng khi backend đã cấu hình model và khóa API.

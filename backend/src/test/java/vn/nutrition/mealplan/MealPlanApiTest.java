@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
-    "spring.datasource.url=jdbc:postgresql://localhost:5433/nutrition?currentSchema=phase2_test",
+    "spring.datasource.url=jdbc:postgresql://localhost:${TEST_DB_PORT:5433}/nutrition?currentSchema=phase2_test",
     "spring.flyway.schemas=phase2_test", "app.demo-enabled=false"
 })
 @AutoConfigureMockMvc

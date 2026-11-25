@@ -8,6 +8,10 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 26MB
 server:
   port: 8080
   error:
@@ -20,6 +24,9 @@ app:
   demo-admin-password: ${DEMO_ADMIN_PASSWORD:}
   openai-api-key: ${OPENAI_API_KEY:}
   openai-model: ${OPENAI_MODEL:}
+  openai-embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+  rag-minimum-similarity: ${RAG_MINIMUM_SIMILARITY:0.30}
+  rag-storage: ${RAG_STORAGE:storage/rag}
 springdoc:
   api-docs:
     path: /api/v1/openapi

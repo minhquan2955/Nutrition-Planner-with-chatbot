@@ -7,8 +7,8 @@ export function Notice({ error }: { error: unknown }) {
   return <div className="notice error" role="alert"><strong>{error instanceof Error ? error.message : "Đã xảy ra lỗi. Vui lòng thử lại."}</strong>
     {error instanceof ApiError && error.traceId && <small>Mã tra cứu: {error.traceId}</small>}</div>;
 }
-function Field({ name, label, errors, children, hint }: { name: string; label: string; errors?: Record<string, string>; children: ReactNode; hint?: string }) {
-  return <div className="field"><label htmlFor={name}>{label}</label>{children}{hint && <small>{hint}</small>}
+export function Field({ name, label, errors, children, hint }: { name: string; label: string; errors?: Record<string, string>; children: ReactNode; hint?: string }) {
+  return <div className="field"><label htmlFor={name}>{label}</label>{children}{hint && <small id={`${name}-hint`}>{hint}</small>}
     {errors?.[name] && <span className="field-error" id={`${name}-error`}>{errors[name]}</span>}</div>;
 }
 export function AuthForm({ onLogin, notice }: { onLogin: (account: Account) => Promise<void>; notice: string }) {

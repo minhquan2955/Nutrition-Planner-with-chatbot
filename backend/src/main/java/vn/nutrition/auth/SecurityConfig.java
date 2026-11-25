@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/health","/api/v1/auth/csrf","/api/v1/auth/register","/api/v1/auth/login","/api/v1/openapi/**","/api/v1/docs","/swagger-ui/**").permitAll()
                 .requestMatchers("/api/v1/auth/me","/api/v1/auth/logout","/api/v1/auth/change-password","/api/v1/me/**","/api/v1/ingredients").authenticated()
                 .requestMatchers("/api/v1/foods","/api/v1/recipes","/api/v1/meal-plan-jobs/**","/api/v1/meal-plans/**").authenticated()
+                .requestMatchers("/api/v1/conversations","/api/v1/conversations/**").authenticated()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN").anyRequest().denyAll())
             .exceptionHandling(e->e
                 .authenticationEntryPoint((req,res,ex)->ApiErrors.write(res,json,401,"UNAUTHENTICATED","Vui lòng đăng nhập để tiếp tục."))

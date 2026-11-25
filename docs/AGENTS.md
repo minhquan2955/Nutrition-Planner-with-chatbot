@@ -46,7 +46,7 @@ Ba tầng, **một Backend chia module**. Không tách nhiều dịch vụ độ
 - Chạy bằng Docker Compose.
 - Module Backend: xác thực, hồ sơ, tính toán, thực phẩm/món ăn, thực đơn, tiến trình, Chatbot/RAG, quản trị.
 - Phase 2 dùng Spring AI và OpenAI Structured Outputs (`JSON_SCHEMA`) để sinh gợi ý bữa ăn một ngày. Backend kiểm tra định dạng và tính kcal ước tính từ dữ liệu món. Worker giới hạn 3 lần gọi trong 180 giây, tính cả lượt thử lại.
-- Phase 3 dùng cùng adapter để tạo embedding và sinh câu trả lời. Module RAG đọc PDF theo trang bằng `PagePdfDocumentReader`, lưu và truy xuất `rag_chunks` qua JDBC/pgvector, rồi xác minh mã đoạn trích dẫn. Schema đi qua Flyway.
+- Phase 3 dùng adapter Spring AI với cấu hình OpenAI của backend để tạo embedding và sinh câu trả lời. Module RAG đọc PDF theo trang bằng `PagePdfDocumentReader`, lưu và truy xuất `rag_chunks` qua JDBC/pgvector, rồi xác minh mã đoạn trích dẫn. Schema đi qua Flyway.
 - Không hardcode khóa API hoặc tên model trong nghiệp vụ.
 - Đổi model embedding hoặc số chiều vector: tạo lại chỉ mục. Không trộn vector không tương thích.
 - Thời điểm lưu theo UTC. Ngày thực đơn và nhật ký theo `Asia/Ho_Chi_Minh`.
@@ -247,7 +247,7 @@ Xem [thiết kế CSDL gốc](Danh_sach_30_bang_CSDL.md). Danh sách 30 bảng m
 1. **Lớp AI — đã chốt:** dùng Spring AI trong adapter OpenAI của backend Spring Boot theo kiến trúc ở mục 4. Các mốc tích hợp nằm trong [kế hoạch 6 phase](Ke_hoach_TTCS_6_phase_va_User_Story.md).
 2. **Phạm vi bàn giao — đã chốt:** gợi ý một ngày theo kcal và đặc điểm hồ sơ, cùng Chatbot RAG có trích dẫn. Dùng mục 5 để xác định phần thực hiện của các FR trong đặc tả gốc.
 3. **FR-01 — đã chốt ngày 16/11/2026:** người dùng yêu cầu đăng ký và đổi mật khẩu ngay Phase 1, ngoài đăng nhập/đăng xuất và 2 tài khoản mẫu.
-4. **Model embedding và số chiều vector** chưa chọn.
+4. **Model embedding Phase 3 — đã chốt:** `text-embedding-3-small`, 1.536 chiều. Xem [cách nạp nguồn và lập lại chỉ mục](PHASE3.md).
 5. **Công cụ migration — đã chốt:** Flyway SQL, build bằng Maven Wrapper, Java 21.
 6. **Hồ sơ Phase 1 — đã chốt:** CRUD hồ sơ cơ bản và chỉ số ước tính theo quy tắc có phiên bản. V4 giữ dữ liệu cũ và cho phép tạo hồ sơ mà không nhập điều kiện cá nhân hóa. Xem `docs/PHASE1.md`.
 7. **Áp dụng thực đơn:** thiết kế `meal_plan_days.is_applied` thuộc phạm vi mở rộng sau bàn giao.
